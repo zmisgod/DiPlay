@@ -8,6 +8,8 @@ import com.shilapi.xcertplay.orchestration.ManualHotspotValidation
 import com.shilapi.xcertplay.transport.EvChargingConnectors
 
 internal fun CarPlaySize.localizedLabel(context: Context): String = context.getString(when (this) {
+    CarPlaySize.LARGEST -> R.string.settings_carplay_size_largest
+    CarPlaySize.EXTRA_LARGE -> R.string.settings_carplay_size_extra_large
     CarPlaySize.LARGE -> R.string.option_size_large
     CarPlaySize.MEDIUM -> R.string.option_size_medium
     CarPlaySize.SMALL -> R.string.option_size_small
@@ -16,7 +18,7 @@ internal fun CarPlaySize.localizedLabel(context: Context): String = context.getS
 /** [custom] marks the row that opens the length slider; its [widthMillimeters] is where the slider starts. */
 internal data class CarPlaySizeChoice(val label: String, val widthMillimeters: Int, val custom: Boolean = false)
 
-/** The three presets with their lengths, then the Custom row: the saved length when it is no preset, else "Custom…". */
+/** The five presets with their lengths, then the Custom row: the saved length when it is no preset, else "Custom…". */
 internal fun carPlaySizeChoices(context: Context, savedMillimeters: Int): List<CarPlaySizeChoice> {
     fun named(name: String, millimeters: Int, custom: Boolean = false) =
         CarPlaySizeChoice(context.getString(R.string.size_option_millimeters, name, millimeters), millimeters, custom)

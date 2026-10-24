@@ -73,7 +73,7 @@ class VehicleSpeedNmeaTest {
             override fun latestNmea() = fixes.removeAt(0)
         }
         val provider = VehicleSpeedLocationProvider(position, FakeSpeed(), logs::add, { now })
-        provider.onRequested(setOf(Iap2LocationMessages.VEHICLE_SPEED_DATA))
+        provider.onRequested(setOf(1, 2, Iap2LocationMessages.VEHICLE_SPEED_DATA))
         repeat(3) { provider.latestNmea(); now += 20_000L }
         assertTrue(logs.isEmpty())
         provider.latestNmea()
@@ -93,7 +93,7 @@ class VehicleSpeedNmeaTest {
             override fun status() = "adb=READY speed=0/240 gear=none"
         }
         val provider = VehicleSpeedLocationProvider(FakePosition("\$GPGGA\r\n"), speed, logs::add, { now })
-        provider.onRequested(setOf(Iap2LocationMessages.VEHICLE_SPEED_DATA))
+        provider.onRequested(setOf(1, 2, Iap2LocationMessages.VEHICLE_SPEED_DATA))
         provider.latestNmea()
         now += 60_000L
         provider.latestNmea()

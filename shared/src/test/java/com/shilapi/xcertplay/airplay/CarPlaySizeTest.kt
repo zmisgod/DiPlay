@@ -11,8 +11,9 @@ class CarPlaySizeTest {
     }
 
     @Test
-    fun `only the three preset widths count as a preset`() {
-        assertNull(CarPlaySize.exact(200))
+    fun `only the five preset widths count as a preset`() {
+        assertEquals(CarPlaySize.EXTRA_LARGE, CarPlaySize.exact(200))
+        assertEquals(CarPlaySize.LARGEST, CarPlaySize.exact(150))
         assertNull(CarPlaySize.exact(275))
         assertNull(CarPlaySize.exact(400))
     }

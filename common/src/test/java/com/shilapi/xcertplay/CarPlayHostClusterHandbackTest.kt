@@ -64,6 +64,23 @@ class CarPlayHostClusterHandbackTest {
         assertFalse(released())
     }
 
+    @Test fun fx11DashboardsKeepVehicleReadoutsWhenThePhoneMapStops() {
+        BoyueLSettings.select(activity, true)
+        try {
+            for (style in listOf(DashboardStyle.MIDNIGHT, DashboardStyle.PANORAMA,
+                    DashboardStyle.REPLICA, DashboardStyle.OEM_OVERLAY)) {
+                NativeDashboardSettings.setStyle(activity, style)
+                clusterStream(true)
+                clusterStream(false)
+                idle(30)
+                assertFalse("FX11 $style must remain independent of CarPlay", released())
+            }
+        } finally {
+            NativeDashboardSettings.setStyle(activity, DashboardStyle.OFF)
+            BoyueLSettings.select(activity, false)
+        }
+    }
+
     private fun clusterStream(active: Boolean) {
         activity.javaClass.getDeclaredMethod("onScreenStreamStateChanged",
             Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType)

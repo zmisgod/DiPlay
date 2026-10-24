@@ -33,6 +33,40 @@ class ClusterArtworkDeliveryTest {
         idle()
     }
 
+    @Test fun fx11PanelsReceivePositionAndPauseWithoutRepublishingAndroidMetadata() {
+        val song = CarPlayNowPlaying(title = "A", artworkTransferId = 7,
+            elapsedMillis = 1000, playing = true)
+        val art = seed(song)
+        BoyueLSettings.select(context, true)
+        var shown = ClusterMusicState.Snapshot()
+        val stop = ClusterMusicState.observe { shown = it }
+        try {
+            val paused = song.copy(elapsedMillis = 32000, playing = false)
+            `when`(controller.nowPlayingSnapshot()).thenReturn(paused)
+            call("onNowPlayingChanged", controller); idle()
+            assertEquals(32000L, shown.info.elapsedMillis)
+            assertFalse(shown.info.playing)
+            assertSame(art, shown.artwork)
+            assertFalse(CarPlayMediaKeys.metadataChanged(song, paused))
+        } finally {
+            stop()
+            BoyueLSettings.select(context, false)
+        }
+    }
+
+    @Test fun fx11NativePanelsEnableCoverRecoveryWithoutTheUpstreamMusicCard() {
+        seed(CarPlayNowPlaying(title = "A", artworkTransferId = 7))
+        BoyueLSettings.select(context, true)
+        try {
+            ClusterMusicSettings.saveEnabled(context, false)
+            NativeDashboardSettings.setStyle(context, DashboardStyle.REPLICA)
+            assertEquals(true, call("albumRecoveryEnabled"))
+        } finally {
+            NativeDashboardSettings.setStyle(context, DashboardStyle.OFF)
+            BoyueLSettings.select(context, false)
+        }
+    }
+
     private fun seed(song: CarPlayNowPlaying): Bitmap {
         set("controller", controller)
         set("appContext", context)

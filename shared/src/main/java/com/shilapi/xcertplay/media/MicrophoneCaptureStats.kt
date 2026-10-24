@@ -5,7 +5,7 @@ import com.shilapi.xcertplay.airplay.MicrophoneConfig
 
 internal enum class MicrophoneFailureStage {
     MIN_BUFFER, ENCODER, RECORDER_CREATION, RECORDER_INITIALIZATION, SOCKET_CREATION,
-    RECORDING, READ, CAPTURE, START,
+    RECORDING, READ, CAPTURE, START, INPUT_ROUTING,
 }
 
 /** Capture-thread counters only. Never retains PCM, encoded packets, keys or endpoint metadata. */
@@ -44,6 +44,7 @@ internal class MicrophoneCaptureStats(
      * [metadata] is not volatile.
      */
     fun useSource(source: Int) { metadata = "type=$type source=${sourceName(source)} $format" }
+    fun useVoiceCommunicationSource() = useSource(7)
 
     fun reading() { readStart = nowNs() }
 

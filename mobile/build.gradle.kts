@@ -17,7 +17,7 @@ android {
         applicationId = "com.shihab.diplay"
         minSdk = 24
         targetSdk = 37
-        versionCode = 40
+        versionCode = 78
         versionName = "0.2.21"
 
     }
@@ -40,7 +40,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".hudtest"
-            versionNameSuffix = "-hud-test"
+            versionNameSuffix = "-hud-test-v47"
         }
         release {
             optimization {
@@ -53,6 +53,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // The read-only FX11 client is executed from Android-managed nativeLibraryDir.
+    packaging { jniLibs.useLegacyPackaging = true }
     buildFeatures {
         compose = true
     }

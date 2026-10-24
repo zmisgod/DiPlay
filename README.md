@@ -1,12 +1,14 @@
-# DiPlay
+# DiPlay for FX11
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
-**CarPlay for compatible BYD Android head units.** Wired and wireless, with the familiar DiAuto interface. Independent app: `com.shihab.diplay`.
+**This build is exclusively for FX11 head units (Geely Boyue L).** It adapts DiPlay for FX11 vehicle data, custom instrument dashboards and wired/wireless CarPlay.
 
-> **BYD support scope:** These projects focus on BYD cars. They may work on other brands, but other brands are unsupported and there are no plans to add support or fix brand-specific incompatibilities.
+> **Support scope:** This fork targets FX11 head units only. The upstream DiPlay documentation and links below describe the original project; they do not imply that this fork supports BYD or other head units.
 
-[Download & website](https://shihabal3amri.github.io/DiPlay/) · [Release](https://github.com/shihabal3amri/DiPlay/releases/tag/v0.2.21) · [Report a problem](https://github.com/shihabal3amri/DiPlay/issues/new/choose)
+FX11 development branch: [`fx11`](https://github.com/zmisgod/DiPlay/tree/fx11) · [Upstream integration notes (Chinese)](docs/FX11_UPSTREAM_MERGE_20261024.md)
+
+Upstream links: [Download & website](https://shihabal3amri.github.io/DiPlay/) · [Release](https://github.com/shihabal3amri/DiPlay/releases/tag/v0.2.21) · [Report a problem](https://github.com/shihabal3amri/DiPlay/issues/new/choose)
 
 ![DiPlay home](site/assets/home.png)
 

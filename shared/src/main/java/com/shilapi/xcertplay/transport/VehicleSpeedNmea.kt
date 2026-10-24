@@ -12,6 +12,8 @@ data class VehicleSpeedReading(val gear: VehicleGear, val samples: List<VehicleS
 
 /** Car wheel speed for dead reckoning; sampled in the background so the iAP2 loop never waits. */
 interface VehicleSpeedSource {
+    fun available(): Boolean = true
+
     fun start()
 
     fun stop()
@@ -32,6 +34,8 @@ interface VehicleSpeedSource {
 object PascdEncoder {
     fun encode(reading: VehicleSpeedReading): String? {
         val samples = reading.samples.takeIf { it.isNotEmpty() } ?: return null
+        if (samples.any { it.elapsedMillis < 0 || !it.metersPerSecond.isFinite() || it.metersPerSecond !in 0.0..150.0 } ||
+            samples.zipWithNext().any { (a, b) -> b.elapsedMillis <= a.elapsedMillis }) return null
         val start = samples.first().elapsedMillis
         val body = buildString {
             append("PASCD,").append(format("%.3f", start / 1000.0)).append(",C,")
@@ -54,12 +58,17 @@ object PascdEncoder {
  * when there is no position fix, as in a tunnel, which is when the iPhone needs it most.
  */
 class VehicleSpeedLocationProvider(
-    private val position: Iap2LocationProvider,
+    private val position: Iap2LocationProvider?,
     private val speed: VehicleSpeedSource,
     private val log: (String) -> Unit = {},
     private val nowMillis: () -> Long = { System.nanoTime() / 1_000_000L },
 ) : Iap2LocationProvider {
     @Volatile private var speedRequested = false
+    @Volatile private var positionRequested = true
+
+    override fun supportedComponents(): Set<Int> = position?.supportedComponents().orEmpty() +
+        if (speed.available()) setOf(4) else emptySet()
+
     // A minute of what reached the iPhone. In a tunnel the speed went after about two minutes (#807), and
     // the report could not say whether the car's position or its wheel speed had stopped.
     private var windowStart = -1L
@@ -71,22 +80,27 @@ class VehicleSpeedLocationProvider(
 
     override fun onRequested(components: Set<Int>) {
         speedRequested = Iap2LocationMessages.VEHICLE_SPEED_DATA in components
-        position.onRequested(components)
+        positionRequested = components.any { it == 1 || it == 2 }
+        if (!speedRequested) speed.stop()
+        if (!positionRequested) position?.stop()
+        position?.onRequested(components.intersect(setOf(1, 2)))
     }
 
     override fun start(): Boolean {
-        val started = position.start()
+        val started = positionRequested && position?.start() == true
         if (speedRequested) speed.start()
         return started || speedRequested
     }
 
     override fun stop() {
         speed.stop()
-        position.stop()
+        position?.stop()
+        speedRequested = false
+        positionRequested = false
     }
 
     override fun latestNmea(): String? {
-        val fix = position.latestNmea()
+        val fix = if (positionRequested) position?.latestNmea() else null
         val reading = if (speedRequested) speed.drain() else null
         val pascd = reading?.let(PascdEncoder::encode)
         record(fix != null, reading)
