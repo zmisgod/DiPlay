@@ -85,6 +85,8 @@ class CarPlayStageTextTest {
         assertStage(R.string.opening_carplay, CarPlayStatus.RunningControl)
         assertStage(R.string.reconnecting_to_your_iphone, CarPlayStatus.ControlEnded)
         assertStage(R.string.waiting_for_mfi_coprocessor, CarPlayStatus.WaitingForMfi)
+        assertStage(R.string.wireless_handoff_timeout,
+            CarPlayStatus.Failed("handoff timeout", startupFailure = WirelessStartupFailure.HANDOFF_TIMEOUT))
         assertStage(R.string.getting_carplay_ready, CarPlayStatus.OpeningDataPaths)
 
         val notPaired = "The selected iPhone is no longer paired. Choose it again in DiPlay."

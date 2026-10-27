@@ -81,6 +81,7 @@ class LastConnectionProblemTest {
             hotspotOff,
             notPaired,
             CarPlayStatus.Failed("timeout", startupFailure = WirelessStartupFailure.FIRST_TCP_TIMEOUT),
+            CarPlayStatus.Failed("handoff timeout", startupFailure = WirelessStartupFailure.HANDOFF_TIMEOUT),
             CarPlayStatus.Failed("Hotspot network is not ready", startupFailure = WirelessStartupFailure.HOTSPOT_NOT_READY),
             CarPlayStatus.Failed("Manual hotspot SSID does not match the active local AP configuration: 'Other'",
                 startupFailure = WirelessStartupFailure.HOTSPOT_CONFIGURATION),

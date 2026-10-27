@@ -110,7 +110,7 @@ class NavigationOpusFallbackTest {
     private fun packet(renderer: Any, opus: ByteArray) {
         val packetType = Class.forName("com.shilapi.xcertplay.media.AudioRenderer\$AudioPacket")
         val packet = packetType.declaredConstructors.single().apply { isAccessible = true }
-            .newInstance(ByteArray(12) + opus, 0)
+            .newInstance(ByteArray(12) + opus, 0, System.nanoTime())
         call(renderer, "handle", packet)
     }
 

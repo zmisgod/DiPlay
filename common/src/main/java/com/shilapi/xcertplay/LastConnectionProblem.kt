@@ -25,6 +25,7 @@ internal sealed interface ConnectionProblem {
             WirelessStartupFailure.HOTSPOT_NOT_READY,
             WirelessStartupFailure.HOTSPOT_CONFIGURATION -> R.string.hotspot_network_not_ready
             WirelessStartupFailure.FIRST_TCP_TIMEOUT -> R.string.first_tcp_timeout
+            WirelessStartupFailure.HANDOFF_TIMEOUT -> R.string.wireless_handoff_timeout
             WirelessStartupFailure.WIFI_DIRECT_BESIDE_HOTSPOT -> R.string.wifi_direct_refused_beside_hotspot
             WirelessStartupFailure.BLUETOOTH_UNUSABLE -> R.string.connection_help_bluetooth_unusable
         }

@@ -6882,6 +6882,7 @@ open class CarPlayHostActivity : ComponentActivity() {
         // A startup failure that names its cause, and a line saying the retries stopped, are shown as they are.
         // "Getting CarPlay ready…" or "Retrying…" in their place said DiPlay was still connecting (#809).
         message == getString(R.string.hotspot_network_not_ready) || message == getString(R.string.first_tcp_timeout) ||
+            message == getString(R.string.wireless_handoff_timeout) || message == getString(R.string.ultra_retries_exhausted) ||
             message == getString(R.string.wifi_direct_refused_beside_hotspot) ||
             message.endsWith(getString(R.string.wireless_startup_retries_exhausted)) -> message
         ConnectionFailureCause.entries.any { message == getString(ConnectionFailureGuidance.stage(it)) } -> message

@@ -275,6 +275,27 @@ class CarPlayHostClusterStartupTest {
         assertFalse(ClusterActivityOutput.launchPending)
     }
 
+    @Test fun fx11CustomMapKeepsItsProfileBeforeTheFirstMainFrame() {
+        BoyueLSettings.select(activity, true)
+        NativeDashboardSettings.setStyle(activity, DashboardStyle.REPLICA)
+        NativeDashboardSettings.setMapSize(activity, DashboardMapSize.LARGE)
+        NativeDashboardSettings.setMapHorizontalPosition(activity, 40)
+        assertFalse(session.hasRenderedMainFrame)
+        val expected = NativeDashboardMapConfig.config(DashboardStyle.REPLICA, DashboardMapSize.LARGE, 40)
+        assertEquals(expected, invoke("clusterDisplayConfig"))
+        assertEquals(expected.widthPixels.toDouble() / expected.heightPixels, MapMirrors.streamAspect, 0.0001)
+        assertFalse(ClusterActivityOutput.launchPending)
+    }
+
+    @Test fun fx11DoesNotRouteDisabledClusterVideoOverTheMainScreen() {
+        BoyueLSettings.select(activity, true)
+        AirPlayPersistence.saveClusterMapEnabled(activity, false)
+        val main = mock(Surface::class.java)
+        invokeSurface("attachSurface", main)
+        verify(sink).setSurface(110, main)
+        verify(sink, never()).setSurface(111, main)
+    }
+
     private fun firstFrame() {
         `when`(session.hasRenderedMainFrame).thenReturn(true)
         listener().onVideoFrameRendered(session)
