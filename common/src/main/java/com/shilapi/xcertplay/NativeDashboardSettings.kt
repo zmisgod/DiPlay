@@ -6,7 +6,11 @@ import com.shilapi.xcertplay.host.R
 internal enum class DashboardStyle(val title: Int) {
     OFF(R.string.settings_dashboard_off), MIDNIGHT(R.string.settings_dashboard_midnight),
     PANORAMA(R.string.settings_dashboard_panorama), REPLICA(R.string.settings_dashboard_replica),
-    OEM_OVERLAY(R.string.settings_dashboard_oem_overlay)
+    OEM_OVERLAY(R.string.settings_dashboard_oem_overlay),
+    TRACK(R.string.settings_dashboard_track), POLAR(R.string.settings_dashboard_polar),
+    OBSIDIAN(R.string.settings_dashboard_obsidian), STARFIELD(R.string.settings_dashboard_starfield);
+    val concept get() = this in setOf(TRACK, POLAR, OBSIDIAN, STARFIELD)
+    val supportsAppearance get() = this == REPLICA || (concept && this != POLAR)
 }
 
 /** Classic dashboard palette; independent of the phone video and saved style ordinals. */
@@ -40,7 +44,7 @@ internal enum class DashboardMode(val title: Int) {
     MUSIC(R.string.settings_dashboard_music), TIRES(R.string.settings_dashboard_tires);
     // Keep persisted ordinals stable. Legacy Panorama pages now keep the map plus a compact card.
     fun forStyle(style: DashboardStyle) = when {
-        (style == DashboardStyle.MIDNIGHT || style == DashboardStyle.REPLICA) && this == ALL -> MUSIC
+        (style == DashboardStyle.MIDNIGHT || style == DashboardStyle.REPLICA || style.concept) && this == ALL -> MUSIC
         style == DashboardStyle.PANORAMA && this != TIRES -> MUSIC
         (style == DashboardStyle.OFF || style == DashboardStyle.OEM_OVERLAY) && this == TIRES -> ALL
         else -> this
@@ -57,7 +61,8 @@ internal enum class DashboardMode(val title: Int) {
     companion object {
         fun choices(style: DashboardStyle): List<DashboardMode> =
             when (style) {
-                DashboardStyle.MIDNIGHT, DashboardStyle.REPLICA -> listOf(MUSIC, NAVIGATION, TIRES)
+                DashboardStyle.MIDNIGHT, DashboardStyle.REPLICA, DashboardStyle.TRACK, DashboardStyle.POLAR,
+                DashboardStyle.OBSIDIAN, DashboardStyle.STARFIELD -> listOf(MUSIC, NAVIGATION, TIRES)
                 DashboardStyle.PANORAMA -> listOf(MUSIC, TIRES)
                 DashboardStyle.OFF, DashboardStyle.OEM_OVERLAY -> listOf(ALL, NAVIGATION, MUSIC)
             }
@@ -95,6 +100,25 @@ internal object NativeDashboardSettings {
         appearance(context).resolve(now.get(java.util.Calendar.HOUR_OF_DAY))
     fun setAppearance(context: Context, appearance: DashboardAppearance) {
         prefs(context).edit().putInt("appearance", appearance.ordinal).apply()
+    }
+    // Keep the v48 key for upgrades; its old 2× whole-panel value becomes 1.5× icons.
+    val iconScales = listOf(1f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f)
+    fun panelScale(context: Context): Float {
+        val value = try { prefs(context).getFloat("panel_scale", 1f) } catch (_: ClassCastException) { 1f }
+        return if (value == 2f) 1.5f else iconScales.firstOrNull { kotlin.math.abs(it-value) < .001f } ?: 1f
+    }
+    fun setPanelScale(context: Context, value: Float) {
+        require(value in iconScales)
+        prefs(context).edit().putFloat("panel_scale", value).apply()
+    }
+    fun mirrorMain(context: Context) = prefs(context).getBoolean("mirror_main", false)
+    fun setMirrorMain(context: Context, enabled: Boolean) { prefs(context).edit().putBoolean("mirror_main", enabled).apply() }
+    fun mirrorZoom(context: Context) = prefs(context).getInt("mirror_zoom", 100).coerceIn(50, 400)
+    fun mirrorX(context: Context) = prefs(context).getInt("mirror_x", 0).coerceIn(-100, 100)
+    fun mirrorY(context: Context) = prefs(context).getInt("mirror_y", 0).coerceIn(-100, 100)
+    fun setMirrorTransform(context: Context, zoom: Int, x: Int, y: Int) {
+        require(zoom in 50..400 && x in -100..100 && y in -100..100)
+        prefs(context).edit().putInt("mirror_zoom", zoom).putInt("mirror_x", x).putInt("mirror_y", y).apply()
     }
     fun mapSize(context: Context) = DashboardMapSize.entries.getOrElse(savedKey(context, "map_size", 2)) { DashboardMapSize.LARGE }
     fun setMapSize(context: Context, size: DashboardMapSize) {
@@ -142,7 +166,7 @@ internal object NativeDashboardSettings {
         DashboardStyle.PANORAMA -> "panorama_mode"
         DashboardStyle.REPLICA -> "replica_mode"
         DashboardStyle.OEM_OVERLAY -> "overlay_mode"
-        else -> "mode"
+        else -> if (style(context).concept) "page_${style(context).name}" else "mode"
     }
     fun mode(context: Context): DashboardMode {
         val saved = prefs(context)

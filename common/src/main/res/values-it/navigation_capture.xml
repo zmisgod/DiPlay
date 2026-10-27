@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">Anteprima navigazione (sperimentale)</string>
+    <string name="settings_nav_capture_enable">Registra dati di navigazione</string>
+    <string name="settings_nav_capture_description">Salva i messaggi ricevuti completi, inclusi posizione e nomi delle strade. Continua fuori dalle impostazioni ed è subito attivo. Attivare prima della connessione e avviare la navigazione. Si ferma a 256 MiB senza eliminare registrazioni.</string>
+    <string name="settings_nav_capture_view">Visualizza dati in tempo reale</string>
+    <string name="settings_nav_capture_export">Esporta tutte le registrazioni (ZIP)</string>
+    <string name="settings_nav_capture_preview_note">Anteprima abbreviata; lo ZIP conserva tutti i byte di navigazione acquisiti. Per gli altri messaggi salva solo ID e lunghezza. Nessun dato non significa che il telefono non abbia inviato un percorso.</string>
+    <string name="settings_nav_capture_mark">Segna azione</string>
+    <string name="settings_nav_capture_mark_start">Navigazione avviata</string>
+    <string name="settings_nav_capture_mark_destination">Destinazione cambiata</string>
+    <string name="settings_nav_capture_mark_route">Altro percorso selezionato</string>
+    <string name="settings_nav_capture_mark_end">Navigazione terminata</string>
+</resources>

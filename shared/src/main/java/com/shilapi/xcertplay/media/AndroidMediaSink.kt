@@ -429,6 +429,8 @@ class AndroidMediaSink(
             if (videoClosed) return
             val id = type to key
             synchronized(mirrorLock) {
+                // Reapplying the same live target must not restart its codec/keyframe chain.
+                if (surface != null && mirrorSurfaces[id] === surface) return
                 mirrorDecoders.remove(id)?.close()
                 if (surface == null) {
                     mirrorSurfaces.remove(id)
@@ -436,7 +438,14 @@ class AndroidMediaSink(
                 }
                 mirrorSurfaces[id] = surface
             }
-            lastVideoConfig[type]?.let { (codec, data) -> mirrorDecoders(type).forEach { it.configure(codec, data) } }
+            // Only the new target needs configuration. Opening a preview must not reset
+            // the already-playing physical dashboard (or other launcher mirrors).
+            lastVideoConfig[type]?.let { (codec, data) ->
+                synchronized(mirrorLock) {
+                    val target = mirrorSurfaces[id] ?: return@let
+                    mirrorDecoders.getOrPut(id) { newVideoDecoder(type, target, " stream=$type mirror=$key") }.configure(codec, data)
+                }
+            }
         }
     }
 
@@ -485,7 +494,7 @@ class AndroidMediaSink(
         synchronized(videoOwnershipLock) {
             if (videoClosed) return
             videoDecoder(type).submit(naluBytes, senderNanos, arrivalNanos)
-            mirrorDecoders(type).forEach { it.submit(naluBytes) }
+            mirrorDecoders(type).forEach { it.submit(naluBytes, senderNanos, arrivalNanos) }
         }
     }
 

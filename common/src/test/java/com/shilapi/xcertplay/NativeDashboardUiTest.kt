@@ -24,7 +24,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [29], qualifiers="zh-rCN-w1920dp-h532dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class NativeDashboardUiTest {
-    @Test fun playingCoverKeepsBlackOuterBackgroundOnEveryClassicPage() {
+    @Test fun playingCoverThemesOuterBackgroundOnEveryClassicPage() {
         val art=Bitmap.createBitmap(24,24,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(235,60,20)) }
         val track=CarPlayNowPlaying(title="星河",artist="测试歌手",playing=true)
         val state=DashboardSnapshot(vehicle=mapOf(
@@ -39,7 +39,7 @@ class NativeDashboardUiTest {
         for (mode in listOf(DashboardMode.MUSIC,DashboardMode.NAVIGATION,DashboardMode.TIRES)) {
             val image=render(state,mode,DashboardStyle.REPLICA)
             val tint=image.getPixel(12,12)
-            assertEquals(Color.BLACK,tint)
+            assertTrue("Playing artwork must tint the full background",Color.red(tint)>Color.blue(tint))
             val paused=render(state.copy(music=state.music.copy(info=track.copy(playing=false))),mode,DashboardStyle.REPLICA)
             assertEquals(Color.BLACK,paused.getPixel(12,12))
             val missing=render(state.copy(music=state.music.copy(artwork=null)),mode,DashboardStyle.REPLICA)
@@ -64,11 +64,11 @@ class NativeDashboardUiTest {
             val surface = if (appearance == DashboardAppearance.DAY) ReplicaDayPalette.surface else Color.BLACK
             val image = Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) }
             view.draw(Canvas(image))
-            for (x in listOf(512,1407)) {
+            for (x in listOf(504,1415)) {
                 assertEquals("Header reaches the topmost pixel: $appearance",surface,image.getPixel(x,0))
                 assertNotEquals("Lower header corner reveals the map",surface,image.getPixel(x,58))
             }
-            for (x in listOf(645,1274)) {
+            for (x in listOf(589,1330)) {
                 assertNotEquals("Upper footer corner reveals the map",surface,image.getPixel(x,480))
                 assertEquals("Footer reaches the bottommost pixel: $appearance",surface,image.getPixel(x,531))
             }
@@ -204,20 +204,25 @@ class NativeDashboardUiTest {
         view.layout(0,0,1920,532)
         fun image()=Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
         val art=Bitmap.createBitmap(24,24,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(235,60,20)) }
-        view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(title="测试"),art))
+        view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(title="测试",playing=true),art))
         val first=image()
         val warm=first.getPixel(690,270); assertTrue(Color.red(warm)>Color.blue(warm))
         art.eraseColor(Color.rgb(20,65,235)) // Same bitmap identity, new generation.
         val second=image()
         val cool=second.getPixel(690,270); assertTrue(Color.blue(cool)>Color.red(cool))
-        assertArrayEquals(replicaStatusForeground(first),replicaStatusForeground(second))
+        // Panel tint changes with artwork, but actual gray/green telltale glyphs retain their state colors.
+        for(color in listOf(Color.rgb(141,162,182),Color.rgb(38,57,74),Color.rgb(100,224,166))) {
+            val a=replicaStatusForeground(first).map { if(it==color) 1 else 0 }.toIntArray()
+            val b=replicaStatusForeground(second).map { if(it==color) 1 else 0 }.toIntArray()
+            assertArrayEquals(a,b)
+        }
         view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(),art))
         val stale=image()
         view.snapshot=DashboardSnapshot()
         val empty=image()
         assertEquals("A stale cover without track metadata cannot survive disconnect",empty.getPixel(690,270),stale.getPixel(690,270))
         art.recycle()
-        view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(title="测试"),art))
+        view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(title="测试",playing=true),art))
         val recycled=image() // No crash or stale backdrop after caller recycles artwork.
         assertEquals(empty.getPixel(690,270),recycled.getPixel(690,270))
         listOf(first,second,stale,empty,recycled).forEach { it.recycle() }
@@ -253,7 +258,7 @@ class NativeDashboardUiTest {
         view.layout(0,0,1920,532)
         fun draw()=Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
         val art=Bitmap.createBitmap(80,80,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(220,70,20)) }
-        view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(title="测试歌曲",artist="歌手"),art))
+        view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(title="测试歌曲",artist="歌手",playing=true),art))
         val warm=draw()
         assertEquals(Color.rgb(220,70,20),warm.getPixel(1654,240)) // Crisp, enlarged cover.
         art.eraseColor(Color.rgb(20,70,220))
@@ -262,9 +267,7 @@ class NativeDashboardUiTest {
         // The exposed circular background follows the cover, outside the crisp square.
         val blur=warm.getPixel(1522,270)
         assertTrue(Color.red(blur)>Color.blue(blur))
-        for(x in 1400..1908) for(y in 12..520)
-            if((x-1654)*(x-1654)+(y-266)*(y-266)>152*152)
-                assertEquals("Cover may not repaint the scale or RPM",warm.getPixel(x,y),cool.getPixel(x,y))
+        assertNotEquals("Both dial palettes follow changed artwork",warm.getPixel(1500,150),cool.getPixel(1500,150))
         view.snapshot=DashboardSnapshot(music=ClusterMusicState.Snapshot(CarPlayNowPlaying(),art))
         val stale=draw(); view.snapshot=DashboardSnapshot(); val empty=draw()
         for(x in 1504..1804) for(y in 116..416) assertEquals(empty.getPixel(x,y),stale.getPixel(x,y))
@@ -315,15 +318,15 @@ class NativeDashboardUiTest {
             (left until right).sumOf { x -> (top until bottom).count { y -> bitmap.getPixel(x,y)==Color.rgb(100,224,166) } }
         for(status in listOf(1,2,4,5,6,7,8)) {
             val bitmap=render(state(status))
-            assertEquals("Longitudinal active alone cannot turn the steering wheel green",0,countGreen(bitmap,518,478,568,527))
-            assertEquals(0,countGreen(bitmap,440,5,499,50)) // GPilot cannot imply lane centering.
-            for(x in 500..527) for(y in 8..47) assertEquals("No centering dash or badge",Color.rgb(6,14,23),bitmap.getPixel(x,y))
+            assertEquals("Longitudinal active alone cannot turn the steering wheel green",0,countGreen(bitmap,942,8,987,53))
+            assertEquals(0,countGreen(bitmap,882,5,930,50)) // GPilot cannot imply lane centering.
+            for(x in 931..941) for(y in 8..47) assertEquals("No centering dash or badge",Color.rgb(6,14,23),bitmap.getPixel(x,y))
             bitmap.recycle()
         }
         val known=render(state(2,true))
-        assertEquals(0,countGreen(known,440,5,499,50))
-        assertTrue((440..499).any { x -> (5..50).any { y -> known.getPixel(x,y)==Color.rgb(243,248,255) } })
-        assertTrue(countGreen(known,518,478,568,527)>0); known.recycle()
+        assertEquals(0,countGreen(known,882,5,930,50))
+        assertTrue((882..930).any { x -> (5..50).any { y -> known.getPixel(x,y)==Color.rgb(243,248,255) } })
+        assertTrue(countGreen(known,942,8,987,53)>0); known.recycle()
     }
     @Test fun midnightFooterIgnoresOdometerAndSeatbeltAndOrdinaryCruiseHasNoDistanceBars() {
         val base=DashboardSnapshot(mapOf(VehicleSignal.ASSIST_MODE to VehicleReading("OFF",0,0),
@@ -381,10 +384,10 @@ class NativeDashboardUiTest {
                 return Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
             }
             val full=render(3)
-            val x=when(style) { DashboardStyle.MIDNIGHT -> 1708; DashboardStyle.REPLICA -> 1302; else -> 1177 }
-            val y=when(style) { DashboardStyle.MIDNIGHT -> 502; DashboardStyle.REPLICA -> 20; else -> 489 }
-            val step=when(style) { DashboardStyle.MIDNIGHT -> 60; DashboardStyle.REPLICA -> 0; else -> 0 }
-            val verticalStep=when(style) { DashboardStyle.PANORAMA -> 13; DashboardStyle.REPLICA -> 11; else -> 0 }
+            val x=1302
+            val y=20
+            val step=0
+            val verticalStep=11
             val lit=full.getPixel(x,y)
             assertEquals(Color.rgb(243,248,255),lit)
             assertEquals(lit,full.getPixel(x+step,y+verticalStep)); assertEquals(lit,full.getPixel(x+2*step,y+2*verticalStep))
@@ -445,7 +448,8 @@ class NativeDashboardUiTest {
         host.requestLayout() // This test host is detached, so its aspect listener is not registered.
         host.measure(View.MeasureSpec.makeMeasureSpec(1920,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(532,View.MeasureSpec.EXACTLY))
         host.layout(0,0,1920,532)
-        assertEquals(839,host.getChildAt(0).width); assertEquals(472,host.getChildAt(0).height)
+        val texture=(host.getChildAt(0) as android.view.ViewGroup).getChildAt(0)
+        assertEquals(839,texture.width); assertEquals(472,texture.height)
     }
     @Test fun allThreeStylesHideUnknownAutoLightsAndKeepConfirmedLampStates() {
         for (style in listOf(DashboardStyle.MIDNIGHT, DashboardStyle.PANORAMA)) {
@@ -453,31 +457,11 @@ class NativeDashboardUiTest {
             val unknown=render(base,style=style)
             val on=render(base.copy(vehicle=base.vehicle+(VehicleSignal.AUTO_HEADLIGHTS to VehicleReading(true,0,0))),style=style)
             val off=render(base.copy(vehicle=base.vehicle+(VehicleSignal.AUTO_HEADLIGHTS to VehicleReading(false,0,0))),style=style)
-            val (cx,cy)=when(style) {
-                DashboardStyle.MIDNIGHT -> 629 to 27
-                DashboardStyle.PANORAMA -> 97 to 62
-                else -> 662 to 32
-            }
-            val background=when(style) {
-                DashboardStyle.MIDNIGHT -> Color.rgb(6,14,23)
-                DashboardStyle.PANORAMA -> Color.rgb(6,17,23)
-                else -> Color.BLACK
-            }
-            for(x in cx-22..cx+22) for(y in cy-19..cy+19) {
-                assertEquals("$style must not draw an unconfirmed A lamp",
-                    if(style==DashboardStyle.REPLICA) unknown.getPixel(cx-24,y) else background,unknown.getPixel(x,y))
-            }
-            assertTrue("$style confirmed AUTO stays green",(cx-22..cx+22).any { x ->
-                (cy-19..cy+19).any { y -> on.getPixel(x,y)==Color.rgb(100,224,166) }
-            })
-            assertTrue("$style confirmed off keeps its dim icon",(cx-22..cx+22).any { x ->
-                (cy-19..cy+19).any { y -> off.getPixel(x,y)==Color.rgb(38,57,74) }
-            })
-            val nextLamp=cx+when(style) { DashboardStyle.MIDNIGHT -> 80; DashboardStyle.PANORAMA -> 57; else -> 48 }
-            for(x in nextLamp-22..nextLamp+22) for(y in cy-19..cy+19) {
-                assertEquals("$style low beam must not move or change",unknown.getPixel(x,y),on.getPixel(x,y))
-                assertEquals("$style low beam must not move or change",unknown.getPixel(x,y),off.getPixel(x,y))
-            }
+            // AUTO is now a badge in the shared low-beam glyph, not a separate lamp.
+            for(x in 526..1394) for(y in 0..59) assertEquals(unknown.getPixel(x,y),off.getPixel(x,y))
+            assertTrue((603..617).any { x -> (20..38).any { y -> on.getPixel(x,y)!=unknown.getPixel(x,y) } })
+            for(x in 526..1394) for(y in 0..59) if(x !in 600..620 || y !in 15..40)
+                assertEquals("Only the badge changes",unknown.getPixel(x,y),on.getPixel(x,y))
             unknown.recycle(); on.recycle(); off.recycle()
         }
     }
@@ -547,7 +531,7 @@ class NativeDashboardUiTest {
         assertEquals(underlay,bitmap.getPixel(950,300))
         assertEquals(Color.BLACK,bitmap.getPixel(340,270)) // Opaque speed-dial face over video.
         assertEquals(Color.BLACK,bitmap.getPixel(1580,270)) // Opaque gear-dial face over video.
-        assertEquals(underlay,bitmap.getPixel(600,530)) // Full-height map outside the compact centered footer.
+        assertEquals(underlay,bitmap.getPixel(560,530)) // Full-height map outside the compact centered footer.
         assertNotEquals(underlay,bitmap.getPixel(950,530)) // Footer protects the live time/temperature/range.
         assertNotEquals(underlay,bitmap.getPixel(566,32)) // Indicators stay readable above the map.
         for (cx in listOf(266,1654)) {
@@ -564,7 +548,7 @@ class NativeDashboardUiTest {
         assertNotEquals(first.getPixel(1454,266),missing.getPixel(1454,266)) // 90° sector from 0 to 4k.
         for(x in 12..520) for(y in 12..520) assertEquals("RPM must not move speed",first.getPixel(x,y),missing.getPixel(x,y))
         val shifted=render(known.copy(vehicle=known.vehicle+(VehicleSignal.GEAR to VehicleReading("P",0,0))),style=DashboardStyle.REPLICA)
-        assertTrue((1213..1257).any { x -> (480..531).any { y -> first.getPixel(x,y)!=shifted.getPixel(x,y) } })
+        assertTrue((1267..1313).any { x -> (480..531).any { y -> first.getPixel(x,y)!=shifted.getPixel(x,y) } })
         for(x in 1430..1455) for(y in 200..300) assertEquals("Gear does not change RPM sweep",first.getPixel(x,y),shifted.getPixel(x,y))
         first.recycle(); missing.recycle(); shifted.recycle()
     }
@@ -578,11 +562,12 @@ class NativeDashboardUiTest {
                 val host=NativeDashboardView(app).apply { artworkView.style=DashboardStyle.REPLICA; artworkView.mode=DashboardMode.NAVIGATION }
                 host.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(height,View.MeasureSpec.EXACTLY))
                 host.layout(0,0,width,height)
-                val texture=host.getChildAt(0)
+                val clip=host.getChildAt(0) as android.view.ViewGroup
+                val texture=clip.getChildAt(0)
                 val scale=width/1920f
                 assertEquals("Video must retain its aspect",aspect,texture.width.toDouble()/texture.height,0.01)
                 assertTrue(texture.height>=height)
-                assertTrue(texture.left<=266*scale+1 && texture.right>=1654*scale-1)
+                assertTrue(texture.left+clip.left<=266*scale+1 && texture.right+clip.left>=1654*scale-1)
                 assertTrue(texture.top<=0 && texture.bottom>=height)
                 assertEquals(android.graphics.RectF(266f,0f,1654f,532f),host.artworkView.mapWindow)
             }

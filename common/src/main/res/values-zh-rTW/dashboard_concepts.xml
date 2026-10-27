@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_dashboard_track">疾速賽道</string>
+    <string name="settings_dashboard_polar">極夜雙環（夜間）</string>
+    <string name="settings_dashboard_obsidian">曜石全景</string>
+    <string name="settings_dashboard_starfield">星空</string>
+    <string name="settings_dashboard_panel_scale">上下模組圖示大小</string>
+    <string name="settings_dashboard_panel_default">預設（1×）</string>
+    <string name="settings_dashboard_mirror_main">儀表鏡像主螢幕 CarPlay</string>
+    <string name="settings_dashboard_mirror_main_hint">鏡像完整主螢幕 CarPlay，切換其他應用時也會同步。100% 等比完整顯示；放大後裁切邊緣，可調整上下左右位置。立即生效，不改變主螢幕畫面。</string>
+    <string name="settings_dashboard_mirror_zoom">鏡像畫面縮放</string>
+    <string name="settings_dashboard_mirror_x">鏡像水平偏移</string>
+    <string name="settings_dashboard_mirror_y">鏡像垂直偏移</string>
+    <string name="settings_dashboard_mirror_reset">重設鏡像位置與縮放</string>
+    <string name="settings_dashboard_palette_title">儀表日夜配色</string>
+</resources>

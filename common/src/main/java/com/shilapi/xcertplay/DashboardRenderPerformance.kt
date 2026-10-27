@@ -10,18 +10,19 @@ import java.util.concurrent.atomic.AtomicInteger
 internal class DashboardDialFaceCache {
     private var picture: Picture? = null
     private var lastDay = false
+    private var lastTheme: Any? = null
     private var lastValue: Double? = null
     var buildCount = 0
         private set
 
-    fun draw(canvas: Canvas, day: Boolean, value: Double?, render: (Canvas) -> Unit) {
+    fun draw(canvas: Canvas, day: Boolean, value: Double?, theme: Any? = null, render: (Canvas) -> Unit) {
         var current = picture
-        if (current == null || day != lastDay || value != lastValue) {
+        if (current == null || day != lastDay || value != lastValue || theme != lastTheme) {
             current = Picture()
             val recording = current.beginRecording(416, 416)
             try { recording.translate(208f, 208f); render(recording) }
             finally { current.endRecording() }
-            picture = current; lastDay = day; lastValue = value; buildCount++
+            picture = current; lastDay = day; lastValue = value; lastTheme = theme; buildCount++
         }
         canvas.save()
         canvas.translate(-208f, -208f)
@@ -61,4 +62,23 @@ internal class DashboardRenderMetrics {
         start = now; draws = 0; sumDrawNs = 0; maxDrawNs = 0; lastBuilds = builds
     }
     companion object { private val ids = AtomicInteger() }
+}
+
+/** Texture presentation cadence, separate from vehicle Canvas redraws and network decoder logs. */
+internal class DashboardMapFrameMetrics(private val now: () -> Long = SystemClock::uptimeMillis) {
+    private var started=now()
+    private var last=0L
+    private var count=0
+    private var gap=0L
+    private var stalls=0
+    fun frame(source:String) {
+        val time=now()
+        if(last>0) { val delta=time-last;gap=maxOf(gap,delta);if(delta>=100)stalls++ }
+        last=time;count++
+        val elapsed=time-started
+        if(elapsed>=5000) {
+            DashboardPerformanceLog.record("Dashboard: video source=$source windowMs=$elapsed frames=$count maxPresentationGapMs=$gap gapsOver100ms=$stalls (static maps may pause)")
+            started=time;count=0;gap=0;stalls=0
+        }
+    }
 }

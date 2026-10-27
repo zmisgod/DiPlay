@@ -124,6 +124,7 @@ internal enum class SettingsSection {
     BYD_ADB,
     DISPLAY_AND_PERFORMANCE,
     EXPERIMENTAL_DISPLAY,
+    NAVIGATION_CAPTURE,
     ADVANCED_MEDIA,
     AMBIENT_LIGHTING,
     CAR_BUTTON,
@@ -164,6 +165,7 @@ internal object SettingsInformationArchitecture {
             SettingsSection.LAUNCHER_BUBBLE,
             SettingsSection.BOYUE_DIM,
             SettingsSection.EXPERIMENTAL_DISPLAY,
+            SettingsSection.NAVIGATION_CAPTURE,
             SettingsSection.ADVANCED_MEDIA,
             SettingsSection.NAVIGATION_WHEEL,
             SettingsSection.AMBIENT_LIGHTING,
@@ -538,6 +540,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     override fun onStop() {
+        navigationCaptureDialog?.dismiss()
         cancelUsbPermissionSetup()
         clusterSafeAreaDialog?.dismiss()
         startupHotspotCancelled = true
@@ -1911,28 +1914,31 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 }
                 card.addView(label(getString(R.string.settings_overlay_output_hint), 14, MUTED))
             }
-            if (NativeDashboardSettings.style(this) == DashboardStyle.REPLICA) {
-                choice(card, getString(R.string.settings_dashboard_appearance), DashboardAppearance.entries.map { getString(it.title) },
+            if (NativeDashboardSettings.style(this).supportsAppearance) {
+                choice(card, getString(R.string.settings_dashboard_palette_title), DashboardAppearance.entries.map { getString(it.title) },
                     NativeDashboardSettings.appearance(this).ordinal, reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
                     NativeDashboardSettings.setAppearance(this, DashboardAppearance.entries[it])
                 }
                 card.addView(label(getString(R.string.settings_dashboard_appearance_hint), 14, MUTED))
             }
+            dashboardPresentationControls(card)
             val dashboardModes = NativeDashboardSettings.modes(this)
-            choice(card, getString(R.string.settings_dashboard_map_size), DashboardMapSize.entries.map { getString(it.title) },
-                NativeDashboardSettings.mapSize(this).ordinal, reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
-                NativeDashboardSettings.setMapSize(this, DashboardMapSize.entries[it])
+            if (!NativeDashboardSettings.mirrorMain(this)) {
+                choice(card, getString(R.string.settings_dashboard_map_size), DashboardMapSize.entries.map { getString(it.title) },
+                    NativeDashboardSettings.mapSize(this).ordinal, reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
+                    NativeDashboardSettings.setMapSize(this, DashboardMapSize.entries[it])
+                }
+                card.addView(label(getString(R.string.settings_dashboard_map_size_hint), 14, MUTED))
+                val positions = NativeDashboardMapConfig.horizontalPositions
+                choice(card, getString(R.string.settings_dashboard_map_position), positions.map {
+                    overlayOffsetLabel(it, getString(R.string.marker_left), getString(R.string.marker_right), 50)
+                }, positions.indexOf(NativeDashboardSettings.mapHorizontalPosition(this)),
+                    reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
+                    NativeDashboardSettings.setMapHorizontalPosition(this, positions[it])
+                    markReconnectNeeded()
+                }
+                card.addView(label(getString(R.string.settings_dashboard_map_position_hint), 14, MUTED))
             }
-            card.addView(label(getString(R.string.settings_dashboard_map_size_hint), 14, MUTED))
-            val positions = NativeDashboardMapConfig.horizontalPositions
-            choice(card, getString(R.string.settings_dashboard_map_position), positions.map {
-                overlayOffsetLabel(it, getString(R.string.marker_left), getString(R.string.marker_right), 50)
-            }, positions.indexOf(NativeDashboardSettings.mapHorizontalPosition(this)),
-                reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
-                NativeDashboardSettings.setMapHorizontalPosition(this, positions[it])
-                markReconnectNeeded()
-            }
-            card.addView(label(getString(R.string.settings_dashboard_map_position_hint), 14, MUTED))
             choice(card, getString(R.string.settings_dashboard_layout), dashboardModes.map { getString(it.titleFor(NativeDashboardSettings.style(this))) },
                 dashboardModes.indexOf(NativeDashboardSettings.mode(this)), reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
                 NativeDashboardSettings.setMode(this, dashboardModes[it])
@@ -2210,6 +2216,10 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                     markReconnectNeeded()
                 }
             }
+        }
+        filteredSection(content, SettingsSection.NAVIGATION_CAPTURE,
+            getString(R.string.settings_nav_capture_title), R.drawable.ic_dp_advanced) { card ->
+            navigationCaptureControls(card)
         }
         // Opt-in controls that can cost sound or video on some head units.
         filteredSection(content, SettingsSection.ADVANCED_MEDIA,
@@ -5026,7 +5036,28 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         card.addView(label(chargingText, 14, if (charging.supported) MUTED else WARNING))
     }
 
-    private fun showVehicleDataSettings(card: LinearLayout, capabilities: BydVehicleCapabilities?) {
+    private fun dashboardPresentationControls(card: LinearLayout) {
+            val scales=NativeDashboardSettings.iconScales
+            choice(card,getString(R.string.settings_dashboard_panel_scale),
+                scales.map { if (it == 1f) getString(R.string.settings_dashboard_panel_default) else String.format(java.util.Locale.US, "%.1f×", it) },
+                scales.indexOf(NativeDashboardSettings.panelScale(this)),reconnects=false,announcesReconnect=false,adaptiveHeight=true) {
+                NativeDashboardSettings.setPanelScale(this,scales[it])
+            }
+            toggle(card,getString(R.string.settings_dashboard_mirror_main),getString(R.string.settings_dashboard_mirror_main_hint),
+                NativeDashboardSettings.mirrorMain(this)) { NativeDashboardSettings.setMirrorMain(this,it);render() }
+            if(NativeDashboardSettings.mirrorMain(this)) {
+                fun save(zoom:Int=NativeDashboardSettings.mirrorZoom(this),x:Int=NativeDashboardSettings.mirrorX(this),y:Int=NativeDashboardSettings.mirrorY(this)) {
+                    NativeDashboardSettings.setMirrorTransform(this,zoom,x,y)
+                }
+                card.addView(overlaySliderRow(getString(R.string.settings_dashboard_mirror_zoom),(50..400).toList(),NativeDashboardSettings.mirrorZoom(this)) { "$it%" }.also { row -> row.getChildAt(0).layoutDirection=resources.configuration.layoutDirection; row.onSave={ save(zoom=it) } })
+                card.addView(overlaySliderRow(getString(R.string.settings_dashboard_mirror_x),(-100..100).toList(),NativeDashboardSettings.mirrorX(this)) { "$it%" }.also { row -> row.getChildAt(0).layoutDirection=resources.configuration.layoutDirection; row.onSave={ save(x=it) } })
+                card.addView(overlaySliderRow(getString(R.string.settings_dashboard_mirror_y),(-100..100).toList(),NativeDashboardSettings.mirrorY(this)) { "$it%" }.also { row -> row.getChildAt(0).layoutDirection=resources.configuration.layoutDirection; row.onSave={ save(y=it) } })
+                card.addView(button(getString(R.string.settings_dashboard_mirror_reset),false) { save(100,0,0);render() }.apply { adaptiveHeight=true },matchButton(0,CONTROL_HEIGHT_DP))
+            }
+            bluetoothPauseSettings(card)
+    }
+
+    private fun bluetoothPauseSettings(card: LinearLayout) {
         toggle(card, getString(R.string.bt_suspend_during_carplay), getString(R.string.bt_suspend_during_carplay_description),
             AirPlayPersistence.loadBtSuspendDuringCarplay(this), enabled = !adbSwitchChangePending) {
             AirPlayPersistence.saveBtSuspendDuringCarplay(this, it)
@@ -5041,6 +5072,10 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 markReconnectNeeded()
             }
         }
+    }
+
+    private fun showVehicleDataSettings(card: LinearLayout, capabilities: BydVehicleCapabilities?) {
+        if (!BoyueLSettings.selected(this)) bluetoothPauseSettings(card)
         if (capabilities == null || capabilities.batterySupported) {
             toggle(card, getString(R.string.car_battery_for_the_iphone),
                 getString(R.string.car_battery_for_the_iphone_description),
@@ -6158,6 +6193,102 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 }
             }
         }, "adb-cluster-authorize").start()
+    }
+
+    private var navigationExportInProgress = false
+    private var navigationCaptureDialog: AlertDialog? = null
+    private var navigationCaptureChangePending = false
+    private fun navigationCaptureControls(card: LinearLayout) {
+        val capture = com.shilapi.xcertplay.navigation.NavigationCapture
+        capture.initialize(this)
+        toggle(card, getString(R.string.settings_nav_capture_enable),
+            getString(R.string.settings_nav_capture_description), capture.enabled(), enabled = !navigationCaptureChangePending) { requested ->
+            if (!navigationCaptureChangePending) {
+                navigationCaptureChangePending = true
+                val app = applicationContext
+                Thread({
+                    capture.setEnabled(app, requested)
+                    runOnUiThread {
+                        navigationCaptureChangePending = false
+                        if (!isFinishing && !isDestroyed) {
+                            render()
+                            if (requested) showNavigationCapture()
+                        }
+                    }
+                }, "diplay-navigation-toggle").start()
+            }
+        }
+        card.addView(button(getString(R.string.settings_nav_capture_view), false) { showNavigationCapture() })
+        card.addView(button(getString(R.string.settings_nav_capture_export), false) { exportNavigationCapture() })
+    }
+
+    private fun showNavigationCapture() {
+        navigationCaptureDialog?.dismiss()
+        val text = label("", 14, TEXT).apply { setTextIsSelectable(true) }
+        val scroll = ScrollView(this).apply { addView(text) }
+        val dialog = appDialogBuilder().setTitle(R.string.settings_nav_capture_title)
+            .setView(scroll)
+            .setPositiveButton(R.string.settings_nav_capture_export, null)
+            .setNeutralButton(R.string.settings_nav_capture_mark, null)
+            .setNegativeButton(R.string.close, null).create()
+        val refresh = object : Runnable {
+            override fun run() {
+                if (!dialog.isShowing || isFinishing || isDestroyed) return
+                text.text = getString(R.string.settings_nav_capture_preview_note) + "\n\n" +
+                    com.shilapi.xcertplay.navigation.NavigationCapture.preview(this@DiPlayActivity)
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).isEnabled = com.shilapi.xcertplay.navigation.NavigationCapture.enabled()
+                handler.postDelayed(this, 1000)
+            }
+        }
+        navigationCaptureDialog = dialog
+        dialog.setOnDismissListener {
+            handler.removeCallbacks(refresh)
+            if (navigationCaptureDialog === dialog) navigationCaptureDialog = null
+        }
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { exportNavigationCapture() }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { markNavigationCapture() }
+            refresh.run()
+        }
+        dialog.show()
+    }
+
+    private fun markNavigationCapture() {
+        val labels = arrayOf(getString(R.string.settings_nav_capture_mark_start),
+            getString(R.string.settings_nav_capture_mark_destination), getString(R.string.settings_nav_capture_mark_route),
+            getString(R.string.settings_nav_capture_mark_end))
+        val ids = arrayOf("navigation_started", "destination_changed", "route_selected", "navigation_ended")
+        appDialogBuilder().setTitle(R.string.settings_nav_capture_mark).setItems(labels) { _, index ->
+            com.shilapi.xcertplay.navigation.NavigationCapture.event("user_marker", detail = ids[index])
+        }.setNegativeButton(R.string.close, null).show()
+    }
+
+    private fun exportNavigationCapture() {
+        if (navigationExportInProgress) return
+        navigationExportInProgress = true
+        val app = applicationContext
+        Thread({
+            val result = runCatching { NavigationCaptureExport.save(app) }
+            runOnUiThread {
+                navigationExportInProgress = false
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                result.onSuccess { saved ->
+                    appDialogBuilder().setTitle(R.string.diagnostic_report_saved)
+                        .setMessage(saved.savedPath ?: getString(R.string.diagnostic_report_saved_in_app))
+                        .setPositiveButton(R.string.share) { _, _ ->
+                            runCatching { startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                                type = "application/zip"
+                                putExtra(Intent.EXTRA_STREAM, saved.uri)
+                                clipData = android.content.ClipData.newRawUri("navigation capture", saved.uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }, getString(R.string.settings_nav_capture_export))) }
+                        }.setNegativeButton(R.string.close, null).show()
+                }.onFailure { error ->
+                    appDialogBuilder().setTitle(R.string.could_not_save_the_report)
+                        .setMessage(error.message).setPositiveButton(R.string.close, null).show()
+                }
+            }
+        }, "diplay-navigation-export").start()
     }
 
     private fun reportFileName() = "DiPlay-${SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())}.txt"

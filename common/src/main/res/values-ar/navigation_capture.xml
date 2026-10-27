@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">معاينة بيانات الملاحة (تجريبي)</string>
+    <string name="settings_nav_capture_enable">تسجيل بيانات الملاحة</string>
+    <string name="settings_nav_capture_description">يحفظ رسائل الملاحة المستلمة كاملة، بما فيها الموقع وأسماء الطرق. يستمر خارج الإعدادات ويعمل فوراً. فعّله قبل الاتصال ثم ابدأ الملاحة. يتوقف عند 256 MiB دون حذف التسجيلات.</string>
+    <string name="settings_nav_capture_view">عرض البيانات المباشرة</string>
+    <string name="settings_nav_capture_export">تصدير جميع التسجيلات (ZIP)</string>
+    <string name="settings_nav_capture_preview_note">المعاينة مختصرة؛ يحتفظ ZIP بجميع بايتات الملاحة المسجلة. تُحفظ المعرّفات والأطوال فقط للرسائل الأخرى. غياب البيانات لا يثبت أن الهاتف لم يرسل المسار.</string>
+    <string name="settings_nav_capture_mark">تحديد إجراء</string>
+    <string name="settings_nav_capture_mark_start">بدأت الملاحة</string>
+    <string name="settings_nav_capture_mark_destination">تغيّرت الوجهة</string>
+    <string name="settings_nav_capture_mark_route">تم اختيار مسار آخر</string>
+    <string name="settings_nav_capture_mark_end">انتهت الملاحة</string>
+</resources>

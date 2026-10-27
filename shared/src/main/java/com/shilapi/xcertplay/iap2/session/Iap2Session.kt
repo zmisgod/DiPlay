@@ -23,10 +23,12 @@ class Iap2Session private constructor(
     private val traceContext: String,
     private val onTrace: (String) -> Unit,
 ) : AutoCloseable {
+    private val captureLinkId = java.util.UUID.randomUUID().toString()
     val isClosed: Boolean get() = channel.isClosed
 
     fun awaitReady(timeoutMillis: Long): Boolean {
         val ready = channel.awaitReady(timeoutMillis)
+        com.shilapi.xcertplay.navigation.NavigationCapture.event("link_ready", traceContext, captureLinkId, "ready=$ready")
         emitTrace("IAP2 READY [$traceContext] ready=$ready")
         return ready
     }
@@ -36,6 +38,7 @@ class Iap2Session private constructor(
             channel.send(frame, timeoutMillis)
             emitFrameTrace(Iap2TraceDirection.TX, frame)
         } catch (failure: Throwable) {
+            com.shilapi.xcertplay.navigation.NavigationCapture.event("link_io_failure", traceContext, captureLinkId, failure.javaClass.simpleName)
             emitTrace(
                 Iap2FrameFormatter.formatFailure(
                     Iap2TraceDirection.TX,
@@ -68,6 +71,7 @@ class Iap2Session private constructor(
         return try {
             channel.recv(timeoutMillis)?.also { emitFrameTrace(Iap2TraceDirection.RX, it) }
         } catch (failure: Throwable) {
+            com.shilapi.xcertplay.navigation.NavigationCapture.event("link_io_failure", traceContext, captureLinkId, failure.javaClass.simpleName)
             emitTrace(
                 Iap2FrameFormatter.formatFailure(
                     Iap2TraceDirection.RX,
@@ -86,11 +90,13 @@ class Iap2Session private constructor(
         try {
             channel.close()
         } finally {
+            com.shilapi.xcertplay.navigation.NavigationCapture.event("link_close", traceContext, captureLinkId)
             emitTrace("IAP2 CLOSE [$traceContext]")
         }
     }
 
     private fun emitFrameTrace(direction: Iap2TraceDirection, frame: Iap2Frame) {
+        com.shilapi.xcertplay.navigation.NavigationCapture.frame(direction.label, traceContext, captureLinkId, frame)
         try {
             emitTrace(Iap2FrameFormatter.format(direction, traceContext, frame))
         } catch (failure: Exception) {

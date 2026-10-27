@@ -141,7 +141,7 @@ class OemOverlayUiTest {
             assertTrue(texture.left >= 0 && texture.right <= 720)
             assertEquals(88, texture.top)
             assertTrue(texture.bottom <= 320)
-            assertEquals(0f, texture.alpha, 0f) // No stream/frame: no opaque black map rectangle.
+            assertEquals(0f, (texture as android.view.ViewGroup).getChildAt(0).alpha, 0f) // No stream/frame: no opaque black map rectangle.
             assertEquals(720, view.artworkView.width)
             assertEquals(478, view.artworkView.height)
         } finally { MapMirrors.streamAspect = previousAspect }

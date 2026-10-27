@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_dashboard_track">Circuito</string>
+    <string name="settings_dashboard_polar">Anillos polares (noche)</string>
+    <string name="settings_dashboard_obsidian">Panorama obsidiana</string>
+    <string name="settings_dashboard_starfield">Cielo estrellado</string>
+    <string name="settings_dashboard_panel_scale">Tamaño de iconos superiores e inferiores</string>
+    <string name="settings_dashboard_panel_default">Predeterminado (1×)</string>
+    <string name="settings_dashboard_mirror_main">Duplicar CarPlay principal en el cuadro</string>
+    <string name="settings_dashboard_mirror_main_hint">Muestra toda la pantalla principal, incluidas otras apps. Al 100% se ajusta sin deformación; ampliar recorta los bordes. Ajuste la posición abajo. Se aplica al instante sin cambiar la pantalla principal.</string>
+    <string name="settings_dashboard_mirror_zoom">Zoom de duplicación</string>
+    <string name="settings_dashboard_mirror_x">Desplazamiento horizontal</string>
+    <string name="settings_dashboard_mirror_y">Desplazamiento vertical</string>
+    <string name="settings_dashboard_mirror_reset">Restablecer posición y zoom</string>
+    <string name="settings_dashboard_palette_title">Colores de día y noche</string>
+</resources>

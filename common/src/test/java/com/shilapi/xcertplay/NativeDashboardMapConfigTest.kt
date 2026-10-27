@@ -31,7 +31,7 @@ class NativeDashboardMapConfigTest {
                 view.layout(0,0,1920,532)
                 // Match the runtime tick without detaching or reconnecting the video surface.
                 ReflectionHelpers.callInstanceMethod<Unit>(view,"updateMap")
-                val texture = view.getChildAt(0) as android.view.TextureView
+                val texture = (view.getChildAt(0) as android.view.ViewGroup).getChildAt(0) as android.view.TextureView
                 val bounds = android.graphics.Rect(texture.left,texture.top,texture.right,texture.bottom)
                 if (firstBounds == null) firstBounds = bounds else assertEquals(firstBounds,bounds)
                 val matrix = texture.getTransform(android.graphics.Matrix())

@@ -16,12 +16,14 @@ internal object NativeDashboardMapConfig {
         val (width, height) = when (style) {
             DashboardStyle.OEM_OVERLAY -> 960 to 400
             DashboardStyle.MIDNIGHT -> DashboardLayout.MIDNIGHT_MAP_WIDTH to DashboardLayout.MIDNIGHT_MAP_HEIGHT
-            DashboardStyle.REPLICA -> DashboardLayout.REPLICA_MAP_WIDTH to DashboardLayout.REPLICA_MAP_HEIGHT
+            DashboardStyle.REPLICA, DashboardStyle.POLAR, DashboardStyle.STARFIELD -> DashboardLayout.REPLICA_MAP_WIDTH to DashboardLayout.REPLICA_MAP_HEIGHT
+            DashboardStyle.OBSIDIAN -> 1920 to 532
+            DashboardStyle.TRACK -> 1380 to 532
             else -> DashboardLayout.PANORAMA_MAP_WIDTH to DashboardLayout.PANORAMA_MAP_HEIGHT
         }
         val unobscured = when (style) {
             DashboardStyle.PANORAMA -> AirPlayInsets(top = 136, bottom = 24, left = 24, right = 400)
-            DashboardStyle.REPLICA -> AirPlayInsets(top = DashboardLayout.REPLICA_SAFE_TOP,
+            DashboardStyle.REPLICA, DashboardStyle.POLAR, DashboardStyle.STARFIELD -> AirPlayInsets(top = DashboardLayout.REPLICA_SAFE_TOP,
                 bottom = DashboardLayout.REPLICA_SAFE_BOTTOM, left = DashboardLayout.REPLICA_SAFE_SIDE,
                 right = DashboardLayout.REPLICA_SAFE_SIDE)
             else -> AirPlayInsets()

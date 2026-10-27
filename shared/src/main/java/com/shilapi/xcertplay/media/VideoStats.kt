@@ -11,6 +11,9 @@ internal class VideoStats(
     private var lastArrivalNs = 0L
     private var received = 0
     private var rendered = 0
+    private var lastRenderedNs = 0L
+    private var maxRenderedGapNs = 0L
+    private var slowFrames = 0
     private var recoveries = 0
     private var bytes = 0L
     private var maxArrivalGapNs = 0L
@@ -38,7 +41,15 @@ internal class VideoStats(
         bytes += size
     }
 
-    @Synchronized fun onRendered() { rendered++ }
+    @Synchronized fun onRendered() {
+        val now=nanoTime()
+        if(lastRenderedNs>0) {
+            val gap=now-lastRenderedNs
+            maxRenderedGapNs=maxOf(maxRenderedGapNs,gap)
+            if(gap>=100_000_000L && gap<IDLE_GAP_NS) slowFrames++
+        }
+        lastRenderedNs=now;rendered++
+    }
 
     @Synchronized fun onRecovery() { recoveries++ }
 
@@ -73,13 +84,13 @@ internal class VideoStats(
             received / seconds, rendered / seconds, maxArrivalGapNs / 1_000_000,
             (bytes * 8 / 1000 / seconds).toLong(), recoveries,
             touchAvgMs, maxTouchLatencyNs / 1_000_000, touchSamples, TouchLatencyProbe.maxSendNs / 1_000_000,
-        ) + decodeSummary()
+        ) + " maxRenderGap=${maxRenderedGapNs/1_000_000}ms gapsOver100ms=$slowFrames" + decodeSummary()
         TouchLatencyProbe.maxSendNs = 0
         Log.i(TAG, line)
         windowStartNs = now
         received = 0; rendered = 0; recoveries = 0; bytes = 0; maxArrivalGapNs = 0
         touchSamples = 0; touchLatencySumNs = 0; maxTouchLatencyNs = 0
-        decodeSamples = 0; late = 0
+        decodeSamples = 0; late = 0; maxRenderedGapNs=0;slowFrames=0
         return line
     }
 

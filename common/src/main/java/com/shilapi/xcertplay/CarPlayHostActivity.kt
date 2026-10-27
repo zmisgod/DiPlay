@@ -474,6 +474,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
     }
     // Copies of stream 111 outside the dashboard (centre card, launcher maps) each get their own decoder.
+    private val mainMirrorSink: (String, Surface?) -> Unit = { key, surface -> sink?.setMirrorSurface(SCREEN_TYPE_MAIN, key, surface) }
     private val mirrorSink: (String, Surface?) -> Unit = { key, surface -> sink?.setMirrorSurface(SCREEN_TYPE_ALT, key, surface) }
     private val mirrorsChanged: () -> Unit = {
         updateClusterMapShown()
@@ -843,6 +844,7 @@ class CarPlayHostActivity : ComponentActivity() {
         CarPlayCallKeys.install(applicationContext)
         CenterMapOverlay.requestShow = ::showCenterMap
         MapMirrors.sink = mirrorSink
+        MainScreenMirrors.sink = mainMirrorSink
         MapMirrors.onChanged = mirrorsChanged
         languagePreferenceAtCreate = AppLocale.preference(this)
         if (isIphoneUsbAttachment(intent)) {
@@ -1983,7 +1985,9 @@ class CarPlayHostActivity : ComponentActivity() {
         if (MapMirrors.sink === mirrorSink) {
             MapMirrors.sink = null
             MapMirrors.setStreamActive(false)
+                    MainScreenMirrors.setActive(false)
         }
+        if (MainScreenMirrors.sink === mainMirrorSink) { MainScreenMirrors.sink=null;MainScreenMirrors.setActive(false) }
         if (MapMirrors.onChanged === mirrorsChanged) MapMirrors.onChanged = null
         dismissClusterPresentation()
         mainHandler.removeCallbacks(applyDisplaySize)
@@ -5389,6 +5393,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     }
                     if (controllerGeneration != restartGeneration || startupRetryStopped) return@runOnUiThread
                     MapMirrors.setStreamActive(false)
+                    MainScreenMirrors.setActive(false)
                     ClusterMusicState.publish(com.shilapi.xcertplay.media.CarPlayNowPlaying(), null)
                     com.shilapi.xcertplay.hud.GeelyDimNavigation.clear()
                     startupRetryBudget.disconnected()
@@ -5413,6 +5418,7 @@ class CarPlayHostActivity : ComponentActivity() {
                 runOnUiThread {
                     if (controllerGeneration != restartGeneration || startupRetryStopped) return@runOnUiThread
                     MapMirrors.setStreamActive(false)
+                    MainScreenMirrors.setActive(false)
                     ClusterMusicState.publish(com.shilapi.xcertplay.media.CarPlayNowPlaying(), null)
                     com.shilapi.xcertplay.hud.GeelyDimNavigation.clear()
                     callPopupSessionReady = false
@@ -5527,6 +5533,8 @@ class CarPlayHostActivity : ComponentActivity() {
         updateClusterMapShown()
         sink = snapshot.sink
         sessionDisplay = snapshot.display
+        MainScreenMirrors.aspect=snapshot.width.toDouble()/snapshot.height
+        MainScreenMirrors.setActive(CarPlayBackgroundSession.active)
         // The hotspot came up under the host that started this session; the menu keeps naming it.
         CarPlayBackgroundSession.hotspotReady?.let {
             hotspotStatus = hotspotStatus.copy(ssid = it.ssid, band = it.band, channel = it.channel, backend = it.backend)
@@ -5542,6 +5550,7 @@ class CarPlayHostActivity : ComponentActivity() {
             showSidePanelGripHint()
         }
         MapMirrors.reapply()
+        MainScreenMirrors.reapply()
         CarPlayBackgroundSession.store(snapshot.controller, snapshot.sink, snapshot.width, snapshot.height,
             this, snapshot.display) { completion ->
             runOnUiThread {
@@ -5662,9 +5671,11 @@ class CarPlayHostActivity : ComponentActivity() {
             controllerGeneration = controllerGeneration,
         )
         sink = renderer
+        MainScreenMirrors.aspect=airPlayConfig.main.widthPixels.toDouble()/airPlayConfig.main.heightPixels
         currentSurface?.let(::attachSurface)
         clusterSurface?.let { renderer.setSurface(SCREEN_TYPE_ALT, it) }
         MapMirrors.reapply()
+        MainScreenMirrors.reapply()
         val media = createMediaEngine(renderer)
         val pairings = AirPlayPersistence.loadPairings(this) { id, key ->
             AirPlayPersistence.savePairing(this, id, key)
@@ -6071,6 +6082,7 @@ class CarPlayHostActivity : ComponentActivity() {
                 updateCallPopupGuard()
                 activeScreenStreamTypes.clear()
                 MapMirrors.setStreamActive(false)
+                    MainScreenMirrors.setActive(false)
                 ClusterActivityOutput.setStreamActive(false)
                 ClusterMusicState.publish(com.shilapi.xcertplay.media.CarPlayNowPlaying(), null)
                 com.shilapi.xcertplay.hud.GeelyDimNavigation.clear()
@@ -6130,6 +6142,7 @@ class CarPlayHostActivity : ComponentActivity() {
         appendLog(reason)
         activeScreenStreamTypes.clear()
         MapMirrors.setStreamActive(false)
+                    MainScreenMirrors.setActive(false)
         ClusterActivityOutput.setStreamActive(false)
         setConnectionStage(reason)
         Log.i(TAG, "$reason; rebuilding stack at ${size.width}x${size.height}")
@@ -6681,6 +6694,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private fun onScreenStreamStateChanged(generation: Int, type: Int, active: Boolean) {
         runOnUiThread {
             if (shuttingDown.get() || generation != restartGeneration) return@runOnUiThread
+            if(type==SCREEN_TYPE_MAIN) MainScreenMirrors.setActive(active)
             if (type == SCREEN_TYPE_MAIN && !active) clearIphoneCornerMask()
             if (active) {
                 activeScreenStreamTypes.add(type)

@@ -9,6 +9,10 @@ internal class ReplicaMusicBackdrop {
     private var generation = 0
     private var blurred: Bitmap? = null
     private var tint = Color.rgb(13, 31, 29)
+    var palette: ReplicaArtworkPalette? = null
+        private set
+    var buildCount = 0
+        private set
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
     fun update(artwork: Bitmap?) {
@@ -23,32 +27,48 @@ internal class ReplicaMusicBackdrop {
             val readable = if (Build.VERSION.SDK_INT >= 26 && valid.config == Bitmap.Config.HARDWARE) {
                 valid.copy(Bitmap.Config.ARGB_8888, false)?.also { copy = it } ?: return
             } else valid
-            small = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888)
-            val side = minOf(readable.width, readable.height)
-            Canvas(small).drawBitmap(readable, Rect((readable.width-side)/2, (readable.height-side)/2,
-                (readable.width+side)/2, (readable.height+side)/2), Rect(0, 0, 24, 24), paint)
-            var pixels = IntArray(576).also { small.getPixels(it, 0, 24, 0, 0, 24, 24) }
-            var red = 0L; var green = 0L; var blue = 0L
-            for (color in pixels) { red += Color.red(color); green += Color.green(color); blue += Color.blue(color) }
-            tint = Color.rgb((red/576).toInt(), (green/576).toInt(), (blue/576).toInt())
-            repeat(3) {
-                val next = IntArray(576)
-                for (y in 0..23) for (x in 0..23) {
-                    var r = 0; var g = 0; var b = 0
-                    for (dy in -2..2) for (dx in -2..2) {
-                        val color = pixels[(y+dy).coerceIn(0,23)*24+(x+dx).coerceIn(0,23)]
-                        r += Color.red(color); g += Color.green(color); b += Color.blue(color)
+            // 64² cached pixels: a separable Gaussian needs no full-screen allocations or GPU effects.
+            val size=64
+            small = Bitmap.createBitmap(size,size,Bitmap.Config.ARGB_8888)
+            Canvas(small).drawColor(Color.WHITE)
+            paint.shader=null; paint.color=Color.WHITE;paint.alpha=255
+            Canvas(small).drawBitmap(readable, null, Rect(0,0,size,size), paint)
+            val pixels=IntArray(size*size).also { small.getPixels(it,0,size,0,0,size,size) }
+            palette=ReplicaArtworkPalette.fromPixels(pixels)
+            tint=palette!!.dominant
+            val radius=8;val sigma=3.5
+            val kernel=DoubleArray(radius*2+1) { i -> kotlin.math.exp(-((i-radius)*(i-radius))/(2*sigma*sigma)) }
+            val sum=kernel.sum();kernel.indices.forEach { kernel[it]/=sum }
+            fun pass(input:IntArray,horizontal:Boolean):IntArray {
+                val result=IntArray(input.size)
+                for(y in 0 until size) for(x in 0 until size) {
+                    var red=0.0;var green=0.0;var blue=0.0
+                    for(k in -radius..radius) {
+                        val px=if(horizontal) (x+k).coerceIn(0,size-1) else x
+                        val py=if(horizontal) y else (y+k).coerceIn(0,size-1)
+                        val color=input[py*size+px];val weight=kernel[k+radius]
+                        red+=Color.red(color)*weight;green+=Color.green(color)*weight;blue+=Color.blue(color)*weight
                     }
-                    next[y*24+x] = Color.rgb(r/25, g/25, b/25)
+                    result[y*size+x]=Color.rgb(red.toInt(),green.toInt(),blue.toInt())
                 }
-                pixels = next
+                return result
             }
-            small.setPixels(pixels, 0, 24, 0, 0, 24, 24)
+            small.setPixels(pass(pass(pixels,true),false),0,size,0,0,size,size)
+            buildCount++
             blurred = small; small = null
         } catch (_: RuntimeException) {
             // Recycled/unreadable artwork falls back to a neutral panel, never a failed dashboard.
-            tint = Color.rgb(13, 31, 29)
+            tint = Color.rgb(13, 31, 29); palette=null
         } finally { copy?.recycle(); small?.recycle() }
+    }
+
+    /** Full-cover color masses remain visible; contrast comes from opaque coordinated dial faces. */
+    fun drawAlbum(canvas: Canvas, bounds: RectF) {
+        val image=blurred ?: return
+        paint.shader=null;paint.color=Color.WHITE;paint.alpha=255
+        canvas.drawBitmap(image,null,bounds,paint)
+        paint.color=if(palette?.light==true) Color.argb(38,255,255,255) else Color.argb(58,0,0,0)
+        canvas.drawRect(bounds,paint)
     }
 
     fun draw(canvas: Canvas, bounds: RectF, fadeEdges: Boolean = true, light: Boolean = false) {
@@ -71,7 +91,7 @@ internal class ReplicaMusicBackdrop {
     }
 
     fun clear() {
-        blurred?.recycle(); blurred = null; source = null; generation = 0
+        blurred?.recycle(); blurred = null; source = null; generation = 0; palette=null
         tint = Color.rgb(13, 31, 29)
     }
 }

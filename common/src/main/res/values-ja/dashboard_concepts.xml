@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_dashboard_track">サーキット</string>
+    <string name="settings_dashboard_polar">極夜ツインリング（夜間）</string>
+    <string name="settings_dashboard_obsidian">パノラマ</string>
+    <string name="settings_dashboard_starfield">星空</string>
+    <string name="settings_dashboard_panel_scale">上下のアイコンサイズ</string>
+    <string name="settings_dashboard_panel_default">標準（1×）</string>
+    <string name="settings_dashboard_mirror_main">メーターにメイン CarPlay をミラー表示</string>
+    <string name="settings_dashboard_mirror_main_hint">地図以外のアプリを含むメイン画面全体を表示します。100%では縦横比を保って全体を表示し、拡大時は端が切れます。位置を調整できます。すぐに適用され、メイン画面は変更されません。</string>
+    <string name="settings_dashboard_mirror_zoom">ミラー倍率</string>
+    <string name="settings_dashboard_mirror_x">ミラー水平位置</string>
+    <string name="settings_dashboard_mirror_y">ミラー垂直位置</string>
+    <string name="settings_dashboard_mirror_reset">ミラー位置と倍率をリセット</string>
+    <string name="settings_dashboard_palette_title">メーターの昼夜配色</string>
+</resources>

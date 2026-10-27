@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_dashboard_track">Track</string>
+    <string name="settings_dashboard_polar">Polar twin rings (night)</string>
+    <string name="settings_dashboard_obsidian">Obsidian panorama</string>
+    <string name="settings_dashboard_starfield">Starfield</string>
+    <string name="settings_dashboard_panel_scale">Top and bottom icon size</string>
+    <string name="settings_dashboard_panel_default">Default (1×)</string>
+    <string name="settings_dashboard_mirror_main">Mirror main CarPlay on dashboard</string>
+    <string name="settings_dashboard_mirror_main_hint">Shows the complete main CarPlay screen, including apps other than maps. At 100% the picture fits without distortion; zoom crops the edges. Adjust position below. Applies immediately; primary screen is unchanged.</string>
+    <string name="settings_dashboard_mirror_zoom">Mirror zoom</string>
+    <string name="settings_dashboard_mirror_x">Mirror horizontal offset</string>
+    <string name="settings_dashboard_mirror_y">Mirror vertical offset</string>
+    <string name="settings_dashboard_mirror_reset">Reset mirror placement</string>
+    <string name="settings_dashboard_palette_title">Dashboard day/night palette</string>
+</resources>

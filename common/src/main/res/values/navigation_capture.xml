@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">Navigation data preview (experimental)</string>
+    <string name="settings_nav_capture_enable">Record navigation data</string>
+    <string name="settings_nav_capture_description">Save complete received navigation messages locally, including location and road names. Continues outside Settings; takes effect immediately. Enable before connecting, then start navigation. Stops at 256 MiB without deleting recordings.</string>
+    <string name="settings_nav_capture_view">View live navigation data</string>
+    <string name="settings_nav_capture_export">Export all navigation recordings (ZIP)</string>
+    <string name="settings_nav_capture_preview_note">Preview is abbreviated; ZIP preserves complete captured navigation bytes. Other message types have only ID and length recorded. No data does not prove the phone sent no route.</string>
+    <string name="settings_nav_capture_mark">Mark an action</string>
+    <string name="settings_nav_capture_mark_start">Started navigation</string>
+    <string name="settings_nav_capture_mark_destination">Changed destination</string>
+    <string name="settings_nav_capture_mark_route">Selected another route</string>
+    <string name="settings_nav_capture_mark_end">Ended navigation</string>
+</resources>

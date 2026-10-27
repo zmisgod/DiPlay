@@ -104,6 +104,32 @@ class AndroidMediaSinkCodecDetachTest {
         Thread.setDefaultUncaughtExceptionHandler(previousHandler)
     }
 
+    @Test fun reapplyingMirrorDoesNotRestartAndAddingPreviewDoesNotReconfigureExistingDecoder() {
+        val primary=newSurface(); val cluster=newSurface();val preview=newSurface()
+        val sink=configuredSink(primary)
+        sink.setMirrorSurface(110,"physical-dashboard",cluster)
+        awaitCondition { codec.configuredSurfaces.contains(cluster) }
+        val mirrors:Map<Pair<Int,String>,Any> = sink.field("mirrorDecoders")
+        val original=mirrors[110 to "physical-dashboard"]
+        val originalCodec=mediaCodecOf(requireNotNull(original))
+        val before=codec.configuredSurfaces.count { it===cluster }
+        sink.setMirrorSurface(110,"physical-dashboard",cluster)
+        assertSame(original,mirrors[110 to "physical-dashboard"])
+        sink.setMirrorSurface(110,"preview",preview)
+        awaitCondition { codec.configuredSurfaces.contains(preview) }
+        sink.onVideoFrame(110,idr)
+        assertSame(original,mirrors[110 to "physical-dashboard"])
+        assertSame(originalCodec,mediaCodecOf(original))
+        assertEquals(before,codec.configuredSurfaces.count { it===cluster })
+        sink.setMirrorSurface(110,"preview",null)
+        assertSame(original,mirrors[110 to "physical-dashboard"])
+    }
+    private fun awaitCondition(condition:()->Boolean) {
+        val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5)
+        while(!condition() && System.nanoTime()<deadline) Thread.sleep(5)
+        assertTrue(condition())
+    }
+
     @Test fun smoothVideoParksTheMainDecoderOnAConsumerDrainedOffTheMainThread() {
         val a = newSurface()
         val sink = configuredSink(a)

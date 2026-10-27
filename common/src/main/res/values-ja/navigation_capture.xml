@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">ナビ情報プレビュー（実験的機能）</string>
+    <string name="settings_nav_capture_enable">ナビデータを記録</string>
+    <string name="settings_nav_capture_description">受信したナビメッセージを位置や道路名も含めて保存します。設定を閉じても記録し、すぐに有効になります。接続前に有効にしてからナビを開始してください。256 MiB で停止し、記録は自動削除しません。</string>
+    <string name="settings_nav_capture_view">ナビデータを表示</string>
+    <string name="settings_nav_capture_export">全ナビ記録をエクスポート（ZIP）</string>
+    <string name="settings_nav_capture_preview_note">表示は要約です。ZIP には取得したナビの全バイトを保存します。他のメッセージは ID と長さのみです。受信データがなくても、ルートが送信されていないとは限りません。</string>
+    <string name="settings_nav_capture_mark">操作を記録</string>
+    <string name="settings_nav_capture_mark_start">ナビを開始</string>
+    <string name="settings_nav_capture_mark_destination">目的地を変更</string>
+    <string name="settings_nav_capture_mark_route">別ルートを選択</string>
+    <string name="settings_nav_capture_mark_end">ナビを終了</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">預覽導航資訊（實驗性）</string>
+    <string name="settings_nav_capture_enable">記錄導航資料</string>
+    <string name="settings_nav_capture_description">完整儲存已接收到的導航訊息，可能包含位置及路名。離開設定繼續記錄，立即生效。建議連線前開啟，再開始導航；達到 256 MiB 後停止，不自動刪除記錄。</string>
+    <string name="settings_nav_capture_view">查看即時導航資料</string>
+    <string name="settings_nav_capture_export">匯出全部導航記錄（ZIP）</string>
+    <string name="settings_nav_capture_preview_note">畫面僅顯示摘要；ZIP 保留完整擷取的導航原始位元組。其他訊息僅記錄編號與長度。未收到資料不代表手機沒有傳送路線。</string>
+    <string name="settings_nav_capture_mark">標記操作</string>
+    <string name="settings_nav_capture_mark_start">已開始導航</string>
+    <string name="settings_nav_capture_mark_destination">已更改目的地</string>
+    <string name="settings_nav_capture_mark_route">已選擇另一條路線</string>
+    <string name="settings_nav_capture_mark_end">已結束導航</string>
+</resources>

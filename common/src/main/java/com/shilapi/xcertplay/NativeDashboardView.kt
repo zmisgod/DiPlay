@@ -32,6 +32,17 @@ internal data class DashboardLayout(val map: RectF?, val navigation: RectF?, val
         const val REPLICA_SAFE_BOTTOM = 68
         const val REPLICA_SAFE_SIDE = 282
         fun of(style: DashboardStyle, mode: DashboardMode): DashboardLayout {
+            if (style.concept) {
+                val map = if (mode.forStyle(style) == DashboardMode.NAVIGATION) when(style) {
+                    DashboardStyle.TRACK -> RectF(400f,0f,1780f,532f)
+                    DashboardStyle.OBSIDIAN -> RectF(0f,0f,1920f,532f)
+                    else -> RectF(266f,0f,1654f,532f)
+                } else null
+                val content=RectF(550f,76f,1370f,464f)
+                return DashboardLayout(map, if(map!=null) { if(style==DashboardStyle.OBSIDIAN) RectF(660f,78f,1260f,170f) else RectF(735f,80f,1185f,174f) } else null,
+                    content.takeIf { mode.forStyle(style)==DashboardMode.MUSIC },
+                    content.takeIf { mode.forStyle(style)==DashboardMode.TIRES })
+            }
             if (style == DashboardStyle.OEM_OVERLAY) return oem(mode, navigation = true, music = true)
             if (style == DashboardStyle.REPLICA) return when (mode.forStyle(style)) {
                 DashboardMode.NAVIGATION -> DashboardLayout(RectF(REPLICA_LEFT_DIAL_X, 0f, REPLICA_RIGHT_DIAL_X, 532f), RectF(548f, 70f, 1372f, 150f), null)
@@ -73,6 +84,7 @@ internal data class DashboardDial(val maximum: Double, val divisions: Int, val m
     fun angle(value: Double) = 135f + sweep(value)
     companion object {
         val SPEED = DashboardDial(240.0, 48, 6)
+        val CLASSIC_SPEED = DashboardDial(240.0, 48, 4)
         val RPM = DashboardDial(8000.0, 40, 5)
     }
 }
@@ -80,6 +92,10 @@ internal data class DashboardDial(val maximum: Double, val divisions: Int, val m
 internal class NativeDashboardView(context: Context, private val preview: Boolean = false,
     private val viewport: RectF = RectF(0f, 0f, 1920f, 532f)) : FrameLayout(context) {
     private val texture = TextureView(context)
+    private val videoClip = FrameLayout(context).apply { clipChildren = true; clipToPadding = true }
+    private var mainMirror = NativeDashboardSettings.mirrorMain(context)
+    private var mirrorTransform: List<Int>? = null
+    private val frameMetrics = DashboardMapFrameMetrics()
     internal val artworkView = DashboardCanvas(context, viewport)
     private val mirrorKey = "native-dashboard:${System.identityHashCode(this)}"
     private var surface: Surface? = null
@@ -88,14 +104,16 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
     @Volatile internal var mapDiagnostic = "Map surface not attached"
         private set
     private val frames = DashboardMapFrames()
-    private val streamChanged: (Boolean) -> Unit = { frames.stream(it); updateMap() }
+    private val streamChanged: (Boolean) -> Unit = { if(!mainMirror) { frames.stream(it); updateMap() } }
+    private val mainStreamChanged: (Boolean) -> Unit = { if(mainMirror) { frames.stream(it); updateMap() } }
     private val aspectChanged: () -> Unit = { requestLayout() }
 
     init {
         setBackgroundColor(when { NativeDashboardSettings.style(context) == DashboardStyle.OEM_OVERLAY -> Color.TRANSPARENT
             NativeDashboardSettings.style(context) == DashboardStyle.REPLICA && NativeDashboardSettings.effectiveAppearance(context) == DashboardAppearance.DAY -> ReplicaDayPalette.background
             else -> Color.BLACK })
-        addView(texture)
+        addView(videoClip)
+        videoClip.addView(texture)
         addView(artworkView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         texture.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
@@ -104,14 +122,16 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
             override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) = Unit
             override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean { releaseSurface(); return true }
             override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+                frameMetrics.frame(if(mainMirror) "main" else "cluster")
                 if (mirrored && !frames.visible) { frames.frame(); updateMap() }
             }
         }
     }
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        frames.stream(MapMirrors.streamActive)
+        frames.stream(if(mainMirror) MainScreenMirrors.active else MapMirrors.streamActive)
         MapMirrors.addStreamListener(streamChanged); MapMirrors.addAspectListener(aspectChanged)
+        MainScreenMirrors.addListener(mainStreamChanged); MainScreenMirrors.addAspectListener(aspectChanged)
         removeObserver = NativeDashboardRuntime.observe(context) { snapshot ->
             val style = NativeDashboardSettings.style(context).let { if (it == DashboardStyle.OFF) DashboardStyle.MIDNIGHT else it }
             val mode = NativeDashboardSettings.mode(context)
@@ -124,6 +144,16 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
                 requestLayout()
             }
             val oldGeometry = artworkView.geometry
+            artworkView.panelScale = NativeDashboardSettings.panelScale(context)
+            val requestedMain = NativeDashboardSettings.mirrorMain(context)
+            if(mainMirror != requestedMain) {
+                MapMirrors.set(mirrorKey,null); MainScreenMirrors.set(mirrorKey,null)
+                mirrored=false;frames.resetSurface(); mainMirror=requestedMain
+                frames.stream(if(mainMirror) MainScreenMirrors.active else MapMirrors.streamActive)
+                appliedMapSize=null;requestLayout()
+            }
+            val transform=listOf(NativeDashboardSettings.mirrorZoom(context),NativeDashboardSettings.mirrorX(context),NativeDashboardSettings.mirrorY(context))
+            if(mirrorTransform != transform) { mirrorTransform=transform;requestLayout() }
             artworkView.snapshot = snapshot
             if (oldGeometry != artworkView.geometry) requestLayout()
             artworkView.menuPagingActive = GeelyWheelKeys.isMenuPagingActive(context)
@@ -134,11 +164,12 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
         removeObserver?.invoke(); removeObserver = null
         artworkView.menuPagingActive = false
         MapMirrors.removeStreamListener(streamChanged); MapMirrors.removeAspectListener(aspectChanged)
+        MainScreenMirrors.removeListener(mainStreamChanged); MainScreenMirrors.removeAspectListener(aspectChanged)
         releaseSurface()
         super.onDetachedFromWindow()
     }
     private fun releaseSurface() {
-        MapMirrors.set(mirrorKey, null); mirrored = false; frames.resetSurface()
+        MapMirrors.set(mirrorKey, null); MainScreenMirrors.set(mirrorKey,null); mirrored = false; frames.resetSurface()
         surface?.release(); surface = null
     }
     private var appliedMapWidth = -1
@@ -147,21 +178,23 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
     private fun updateMap() {
         val mapSize = NativeDashboardSettings.mapSize(context)
         if (appliedMapWidth != texture.width || appliedMapHeight != texture.height || appliedMapSize != mapSize) {
-            texture.setTransform(mapTransform(texture.width, texture.height, mapSize))
+            texture.setTransform(if(mainMirror) Matrix() else mapTransform(texture.width, texture.height, mapSize))
             appliedMapWidth = texture.width; appliedMapHeight = texture.height; appliedMapSize = mapSize
         }
         val showMap = artworkView.geometry.map != null && (!preview || NativeDashboardSettings.enabled(context))
         val attach = showMap && surface?.isValid == true
         if (attach != mirrored) {
             frames.resetSurface()
-            MapMirrors.set(mirrorKey, if (attach) surface else null); mirrored = attach
+            if(mainMirror) MainScreenMirrors.set(mirrorKey,if(attach) surface else null)
+            else MapMirrors.set(mirrorKey, if (attach) surface else null)
+            mirrored = attach
         }
         artworkView.mapActive = showMap && mirrored && frames.visible
         // An empty TextureView is opaque by default. Hide its pixels until a fresh frame arrives.
-        texture.alpha = if (artworkView.style == DashboardStyle.OEM_OVERLAY && !artworkView.mapActive) 0f else 1f
-        mapDiagnostic = "mapWindow viewport=$viewport measured=${width}x${height} " +
+        texture.alpha = if (artworkView.mapActive) 1f else 0f
+        mapDiagnostic = "mapWindow source=${if(mainMirror) "main" else "cluster"} zoom=${NativeDashboardSettings.mirrorZoom(context)} viewport=$viewport measured=${width}x${height} " +
             "texture=${texture.left},${texture.top},${texture.right},${texture.bottom} " +
-            "mirrorAttached=$mirrored stream=${MapMirrors.streamActive} freshVisible=${artworkView.mapActive} " +
+            "mirrorAttached=$mirrored stream=${if(mainMirror) MainScreenMirrors.active else MapMirrors.streamActive} freshVisible=${artworkView.mapActive} " +
             "renderScale=${NativeDashboardSettings.mapSize(context).renderScale} " +
             "navigationCard=${artworkView.geometry.navigation != null} musicCard=${artworkView.geometry.music != null}"
         artworkView.invalidateIfContentChanged()
@@ -172,15 +205,20 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
         artworkView.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
         val fitted = fittedMap()
         val scale = min(w / viewport.width(), h / viewport.height())
+        val box=artworkView.geometry.map ?: RectF()
+        videoClip.measure(MeasureSpec.makeMeasureSpec(max(1,(box.width()*scale).roundToInt()),MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(max(1,(box.height()*scale).roundToInt()),MeasureSpec.EXACTLY))
         texture.measure(MeasureSpec.makeMeasureSpec(max(1, (fitted.width() * scale).roundToInt()), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(max(1, (fitted.height() * scale).roundToInt()), MeasureSpec.EXACTLY))
     }
     private fun fittedMap(): RectF {
         val box = artworkView.geometry.map ?: return RectF()
+        if(mainMirror) return DashboardMirrorViewport.fit(box,MainScreenMirrors.aspect,
+            NativeDashboardSettings.mirrorZoom(context),NativeDashboardSettings.mirrorX(context),NativeDashboardSettings.mirrorY(context))
         val ratio = MapMirrors.STREAM_ASPECT.toFloat()
         // The full-height Replica map crops excess edges instead of introducing letterboxing.
         // Other dashboards retain their existing contain fit.
-        val w = if (artworkView.style == DashboardStyle.REPLICA) max(box.width(), box.height() * ratio)
+        val w = if ((artworkView.style == DashboardStyle.REPLICA || artworkView.style.concept)) max(box.width(), box.height() * ratio)
             else min(box.width(), box.height() * ratio)
         val h = w / ratio
         return RectF(box.centerX() - w / 2, box.centerY() - h / 2, box.centerX() + w / 2, box.centerY() + h / 2)
@@ -190,10 +228,14 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
         val dx = (width - viewport.width() * scale) / 2 - viewport.left * scale
         val dy = (height - viewport.height() * scale) / 2 - viewport.top * scale
         val fitted = fittedMap()
-        artworkView.mapWindow = if (artworkView.style == DashboardStyle.REPLICA)
+        artworkView.mapWindow = if (!mainMirror && (artworkView.style == DashboardStyle.REPLICA || artworkView.style.concept))
             artworkView.geometry.map?.let(::RectF) ?: RectF() else fitted
-        val x = (dx + fitted.left * scale).roundToInt(); val y = (dy + fitted.top * scale).roundToInt()
-        texture.layout(x, y, x + texture.measuredWidth, y + texture.measuredHeight)
+        val box=artworkView.geometry.map ?: RectF()
+        if(mainMirror) artworkView.mapWindow=RectF(fitted).apply { if(!intersect(box)) setEmpty() }
+        val clipX=(dx+box.left*scale).roundToInt();val clipY=(dy+box.top*scale).roundToInt()
+        videoClip.layout(clipX,clipY,clipX+videoClip.measuredWidth,clipY+videoClip.measuredHeight)
+        val x=((fitted.left-box.left)*scale).roundToInt();val y=((fitted.top-box.top)*scale).roundToInt()
+        texture.layout(x,y,x+texture.measuredWidth,y+texture.measuredHeight)
         artworkView.layout(0, 0, width, height)
         updateMap()
     }
@@ -208,7 +250,11 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
 internal class DashboardCanvas(context: Context, private val viewport: RectF = RectF(0f, 0f, 1920f, 532f)) : View(context) {
     var style = DashboardStyle.MIDNIGHT
     var appearance = NativeDashboardSettings.effectiveAppearance(context)
-    private val day get() = style == DashboardStyle.REPLICA && appearance == DashboardAppearance.DAY
+    private var artworkTheme: ReplicaArtworkPalette? = null
+    private var artworkSweep: SweepGradient? = null
+    private val day get() = artworkTheme?.light ?: (style.supportsAppearance && appearance == DashboardAppearance.DAY)
+    var panelScale = NativeDashboardSettings.panelScale(context)
+    private val concepts = DashboardConceptRenderer()
     var mode = DashboardMode.ALL
     var snapshot = DashboardSnapshot()
         set(value) {
@@ -233,7 +279,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private var lastVisualLayout: List<Any>? = null
     /** Vehicle timestamps refresh independently of the visible values. */
     internal fun invalidateIfContentChanged(): Boolean {
-        val layout = listOf(style, mode, appearance, mapActive, menuPagingActive, System.currentTimeMillis() / 60_000)
+        val layout = listOf(style, mode, appearance, panelScale, mapActive, menuPagingActive, System.currentTimeMillis() / 60_000)
         val previous = lastVisualState
         val generation = snapshot.music.artwork?.takeUnless { it.isRecycled }?.generationId
         val changed = previous == null || lastVisualLayout != layout || lastMapWindow != mapWindow ||
@@ -245,7 +291,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         lastVisualState = snapshot; lastVisualLayout = layout
         lastArtworkGeneration = generation
         if (lastMapWindow != mapWindow) lastMapWindow = RectF(mapWindow)
-        if (changed) invalidate()
+        if (changed) postInvalidateOnAnimation()
         return changed
     }
     private val musicMarquee = DashboardMarquee()
@@ -262,11 +308,11 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         music = snapshot.music.info.let { !it.title.isNullOrBlank() || !it.artist.isNullOrBlank() || !it.album.isNullOrBlank() })
         else DashboardLayout.of(style, mode)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    private val bg get() = when (style) { DashboardStyle.REPLICA -> if (day) ReplicaDayPalette.background else Color.BLACK; DashboardStyle.PANORAMA -> Color.rgb(6, 17, 23); else -> Color.rgb(6, 14, 23) }
-    private val panel = Color.rgb(17, 29, 43)
+    private val bg get() = when { style.concept -> if(day) 0xffd4d2dd.toInt() else 0xff222139.toInt(); else -> when (style) { DashboardStyle.REPLICA -> if (day) ReplicaDayPalette.background else Color.BLACK; DashboardStyle.PANORAMA -> Color.rgb(6, 17, 23); else -> Color.rgb(6, 14, 23) } }
+    private val panel get() = if(day) 0xffe4e3e1.toInt() else Color.rgb(17, 29, 43)
     private val muted get() = if (day) ReplicaDayPalette.secondary else Color.rgb(141, 162, 182)
     private val accent get() = when (style) { DashboardStyle.REPLICA -> Color.rgb(36, 215, 191); DashboardStyle.PANORAMA -> Color.rgb(111, 226, 189); else -> Color.rgb(106, 222, 255) }
-    private val white get() = if (day) ReplicaDayPalette.text else Color.rgb(243, 248, 255)
+    private val white get() = artworkTheme?.text ?: if (day) ReplicaDayPalette.text else Color.rgb(243, 248, 255)
     private val line get() = if (day) ReplicaDayPalette.inactive else Color.rgb(38, 57, 74)
     private var glyphId = 0
     private var glyph: Drawable? = null
@@ -276,7 +322,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private val dialMusicBackdrop = ReplicaMusicBackdrop()
     private val menuHint = DashboardMenuHint(context)
     private val REPLICA_STATUS_ICON_SIZE = 36f
-    private val REPLICA_STATUS_HORIZONTAL_PADDING = 16f
+    private val REPLICA_STATUS_HORIZONTAL_PADDING = 24f
     private val REPLICA_HEADER_HEIGHT = 60f
     private val REPLICA_FOOTER_HEIGHT = 54f
     private val replicaDaySweep by lazy {
@@ -290,6 +336,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        updateArtworkTheme()
         val drawStarted = android.os.SystemClock.elapsedRealtimeNanos()
         removeCallbacks(marqueeFrame); nextMarqueeAt = Long.MAX_VALUE
         try {
@@ -309,16 +356,25 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         }
         canvas.save()
         if (mapActive) canvas.clipRect(mapWindow, Region.Op.DIFFERENCE)
-        paint.color = bg; paint.style = Paint.Style.FILL; canvas.drawRect(0f, 0f, 1920f, 532f, paint)
+        if(style.concept) concepts.background(canvas,style,day) else {
+            paint.color = bg; paint.style = Paint.Style.FILL; canvas.drawRect(0f, 0f, 1920f, 532f, paint)
+            if (artworkTheme != null) {
+                musicBackdrop.drawAlbum(canvas,RectF(0f,0f,1920f,532f))
+            } else if (style == DashboardStyle.REPLICA && day) {
+                paint.color = ReplicaDayPalette.centerOverlay
+                canvas.drawRect(266f,0f,1654f,532f,paint)
+            }
+        }
         geometry.map?.let { rect ->
-            box(canvas, rect, if(style==DashboardStyle.REPLICA) Color.BLACK else Color.rgb(10, 22, 33), 14f)
+            if(!style.concept && artworkTheme == null) box(canvas, rect, if(style==DashboardStyle.REPLICA) { if(day) ReplicaDayPalette.centerOverlay else Color.BLACK } else Color.rgb(10, 22, 33), 14f)
             if (!mapActive) {
-                text(canvas, context.getString(R.string.dashboard_no_map), rect.centerX(), rect.centerY() + 10, 24f, if(day) Color.rgb(166,184,174) else muted, Paint.Align.CENTER, rect.width() - 40)
+                text(canvas, context.getString(R.string.dashboard_no_map), rect.centerX(), rect.centerY() + 10, 24f, muted, Paint.Align.CENTER, rect.width() - 40)
             }
         }
         canvas.restore()
-        if (style == DashboardStyle.REPLICA) {
-            if (mode.forStyle(style) == DashboardMode.MUSIC) replicaMusicBackground(canvas)
+        if (style.concept) {
+            concepts.instruments(canvas, style, day, snapshot, ::conceptMusic)
+        } else if (style == DashboardStyle.REPLICA) {
             replicaMapEdges(canvas)
             replicaGauge(canvas, DashboardLayout.REPLICA_LEFT_DIAL_X, true)
             replicaGauge(canvas, DashboardLayout.REPLICA_RIGHT_DIAL_X, false)
@@ -335,11 +391,12 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         geometry.music?.let { music(canvas, it) }
         geometry.tires?.let { when (style) {
             DashboardStyle.PANORAMA -> panoramaTires(canvas, it)
-            DashboardStyle.REPLICA -> replicaTires(canvas, it)
+            DashboardStyle.REPLICA, DashboardStyle.TRACK, DashboardStyle.POLAR, DashboardStyle.OBSIDIAN, DashboardStyle.STARFIELD -> replicaTires(canvas, it)
             else -> tirePage(canvas, it)
         } }
-        if (style == DashboardStyle.MIDNIGHT) { statusIcons(canvas); modeTabs(canvas) }
-        if (style == DashboardStyle.REPLICA) { replicaStatus(canvas); replicaFooter(canvas) } else footer(canvas)
+        // Every full dashboard uses the same icons, state semantics and anchored modules.
+        replicaStatus(canvas)
+        replicaFooter(canvas)
         if (menuPagingActive) menuHint.draw(canvas, style)
         canvas.restore()
         } finally {
@@ -354,8 +411,9 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             paint.shader=LinearGradient(x0,y0,x1,y1,from,to,Shader.TileMode.CLAMP)
             c.drawRect(r,paint); paint.shader=null
         }
-        fade(RectF(266f,0f,548f,532f),266f,0f,548f,0f,bg,Color.TRANSPARENT)
-        fade(RectF(1372f,0f,1654f,532f),1372f,0f,1654f,0f,Color.TRANSPARENT,bg)
+        val mask = artworkTheme?.surface ?: if(day) ReplicaDayPalette.centerOverlay else bg
+        fade(RectF(266f,0f,548f,532f),266f,0f,548f,0f,mask,Color.TRANSPARENT)
+        fade(RectF(1372f,0f,1654f,532f),1372f,0f,1654f,0f,Color.TRANSPARENT,mask)
     }
     /** Original silver sector / jade ring vocabulary, with km/h and a correct 0–8 ×1000 RPM scale. */
     private fun replicaGauge(c: Canvas, centerX: Float, speed: Boolean) {
@@ -363,13 +421,13 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         c.translate(centerX,DashboardLayout.REPLICA_DIAL_Y)
         val scale=DashboardLayout.REPLICA_DIAL_RADIUS/208f
         c.scale(scale,scale)
-        val value=if(speed) snapshot.speedKph else snapshot.number(VehicleSignal.ENGINE_RPM)
+        val value=if(speed) snapshot.speedKph?.roundToInt()?.toDouble() else snapshot.number(VehicleSignal.ENGINE_RPM)?.let { (it/10).roundToInt()*10.0 }
         val face=if(speed) speedFace else rpmFace
-        face.draw(c, day, value) { replicaGaugeFace(it, speed, value) }
+        face.draw(c, day, value, artworkTheme) { replicaGaugeFace(it, speed, value) }
         val cx=0f; val cy=0f
         if(speed) {
             text(c,speedNumber(),cx,cy+27,90f,white,Paint.Align.CENTER,216f)
-            text(c,"km/h",cx,cy+63,25f,if(day) ReplicaDayPalette.secondary else Color.rgb(166,190,178),Paint.Align.CENTER,170f)
+            text(c,"km/h",cx,cy+63,25f,artworkTheme?.secondary ?: if(day) ReplicaDayPalette.secondary else Color.rgb(166,190,178),Paint.Align.CENTER,170f)
             val front = snapshot.coolantC == null && snapshot.frontCompartmentC != null
             if (front) text(c,label(R.string.dashboard_front_compartment),cx-49,cy+159,18f,muted,Paint.Align.CENTER,62f)
             else coolantIcon(c,cx-49,cy+151)
@@ -385,30 +443,31 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private val rpmFace = DashboardDialFaceCache()
     internal val dialFaceBuildCount get() = speedFace.buildCount + rpmFace.buildCount
     private fun replicaGaugeFace(c: Canvas, speed: Boolean, value: Double?) {
+        val theme=artworkTheme
         val cx=0f; val cy=0f
-        val dial=if(speed) DashboardDial(240.0,120,10) else DashboardDial.RPM
-        val silver=Color.rgb(226,232,229)
-        paint.shader=null; paint.style=Paint.Style.FILL; paint.color=if(day) ReplicaDayPalette.surface else Color.BLACK
+        val dial=if(speed) DashboardDial.CLASSIC_SPEED else DashboardDial.RPM
+        val silver=theme?.text ?: Color.rgb(226,232,229)
+        paint.shader=null; paint.style=Paint.Style.FILL; paint.color=theme?.surface ?: if(day) ReplicaDayPalette.surface else Color.BLACK
         c.drawCircle(cx,cy,208f,paint) // The stream can never reduce gauge contrast.
         paint.shader=LinearGradient(-180f,-190f,160f,195f,
-            if(day) ReplicaDayPalette.dialBase else intArrayOf(Color.rgb(3,13,11),Color.rgb(6,23,18),Color.rgb(22,37,31)),
+            theme?.dialBase ?: if(day) ReplicaDayPalette.dialBase else intArrayOf(Color.rgb(3,13,11),Color.rgb(6,23,18),Color.rgb(22,37,31)),
             floatArrayOf(0f,.55f,1f),Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,197f,paint); paint.shader=null
         // Thin neutral metallic bezel, rather than a thick green outline.
         paint.style=Paint.Style.STROKE; paint.strokeWidth=1.2f
         paint.shader=LinearGradient(-180f,-208f,150f,208f,
-            if(day) ReplicaDayPalette.bezel else intArrayOf(Color.rgb(88,101,94),Color.rgb(22,31,27),Color.rgb(109,118,109)),
+            theme?.bezel ?: if(day) ReplicaDayPalette.bezel else intArrayOf(Color.rgb(88,101,94),Color.rgb(22,31,27),Color.rgb(109,118,109)),
             floatArrayOf(0f,.55f,1f),Shader.TileMode.CLAMP)
         c.drawCircle(cx,cy,207f,paint); paint.shader=null
-        paint.strokeWidth=1f; paint.color=if(day) ReplicaDayPalette.divider else Color.rgb(18,29,24)
+        paint.strokeWidth=1f; paint.color=theme?.accent ?: if(day) ReplicaDayPalette.divider else Color.rgb(18,29,24)
         c.drawCircle(cx,cy,201f,paint)
         val arc=RectF(cx-164,cy-164,cx+164,cy+164)
         paint.style=Paint.Style.STROKE; paint.strokeWidth=64f
-        if(day) {
+        if(day || theme != null) {
             // The unnumbered 90-degree bridge stays pale even at maximum speed/RPM.
-            paint.shader=LinearGradient(-164f,130f,164f,190f,ReplicaDayPalette.bottomBand,null,Shader.TileMode.CLAMP)
+            paint.shader=LinearGradient(-164f,130f,164f,190f,theme?.bottomBand ?: ReplicaDayPalette.bottomBand,null,Shader.TileMode.CLAMP)
             c.drawArc(arc,45f,90f,false,paint)
-            paint.shader=replicaDaySweep
+            paint.shader=artworkSweep ?: replicaDaySweep
             if(value!=null) c.drawArc(arc,135f,dial.sweep(value),false,paint)
         } else {
             paint.shader=LinearGradient(-190f,-100f,120f,170f,
@@ -420,7 +479,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         paint.shader=null
         paint.strokeWidth=2f
         paint.shader=LinearGradient(-160f,180f,160f,180f,
-            if(day) ReplicaDayPalette.bezel else intArrayOf(Color.rgb(217,225,216),Color.rgb(143,158,146),Color.rgb(35,48,40)),
+            theme?.bezel ?: if(day) ReplicaDayPalette.bezel else intArrayOf(Color.rgb(217,225,216),Color.rgb(143,158,146),Color.rgb(35,48,40)),
             floatArrayOf(0f,.5f,1f),Shader.TileMode.CLAMP)
         c.drawArc(RectF(-204f,-204f,204f,204f),45f,90f,false,paint); paint.shader=null
         for(i in 0..dial.divisions) {
@@ -429,48 +488,51 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             val major=i%dial.majorEvery==0
             val silverTick=value!=null && tickValue<=value
             paint.style=Paint.Style.STROKE
-            paint.color=when { !speed && tickValue>=7000 -> if(day) ReplicaDayPalette.red else Color.rgb(255,73,68); day -> if(silverTick) ReplicaDayPalette.progressTextColor((tickValue/dial.maximum).toFloat()) else ReplicaDayPalette.text; silverTick -> Color.rgb(22,38,32); else -> silver }
+            paint.color=when { !speed && tickValue>=7000 -> if(day) ReplicaDayPalette.red else Color.rgb(255,73,68); theme != null -> if(silverTick) theme.progressTextColor((tickValue/dial.maximum).toFloat()) else theme.text; day -> if(silverTick) ReplicaDayPalette.progressTextColor((tickValue/dial.maximum).toFloat()) else ReplicaDayPalette.text; silverTick -> Color.rgb(22,38,32); else -> silver }
             paint.strokeWidth=if(major) 2.2f else 1.1f
             val inner=if(major) 178f else 184f
-            c.drawLine(cx+cos(a).toFloat()*inner,cy+sin(a).toFloat()*inner,
+            if(speed && !major) {
+                paint.style=Paint.Style.FILL
+                c.drawCircle(cx+cos(a).toFloat()*187.5f,cy+sin(a).toFloat()*187.5f,1.5f,paint)
+            } else c.drawLine(cx+cos(a).toFloat()*inner,cy+sin(a).toFloat()*inner,
                 cx+cos(a).toFloat()*191f,cy+sin(a).toFloat()*191f,paint)
             if(major) {
                 val label=if(speed) tickValue.roundToInt().toString() else (tickValue/1000).roundToInt().toString()
                 // A label straddling a sector edge needs contrast on both silver and jade.
-                val edgeLabel=tickValue>0.0 && value!=null && abs(tickValue-value)<dial.maximum/dial.divisions
-                val labelColor=if(edgeLabel && !day) white else paint.color
+                val edgeLabel=tickValue==0.0 || tickValue==dial.maximum || (value!=null && abs(tickValue-value)<dial.maximum/dial.divisions)
+                val labelColor=if(!speed && tickValue>=7000) paint.color else if(edgeLabel && !day) white else paint.color
                 if(edgeLabel && (!day || labelColor == Color.WHITE)) paint.setShadowLayer(2f,0f,0f,Color.BLACK)
                 text(c,label,cx+cos(a).toFloat()*157f,cy+sin(a).toFloat()*157f+7,
                     if(speed) 20f else 22f,labelColor,Paint.Align.CENTER,60f)
                 paint.clearShadowLayer()
             }
         }
-        // Fine inner tick ring separates the solid sector from the always-readable digital value.
-        for(i in 0..90) {
+        // Only RPM keeps an inner tick ring; speed has exactly three dots between each 20 km/h label.
+        if(!speed) for(i in 0..90) {
             val a=Math.toRadians(135.0+i*3)
             paint.style=Paint.Style.STROKE; paint.strokeWidth=1f
             val tickValue=dial.maximum*i/90.0
-            paint.color=if(day) { if(value!=null && tickValue<=value) ReplicaDayPalette.progressTextColor((tickValue/dial.maximum).toFloat()) else ReplicaDayPalette.secondary } else if(value!=null && tickValue<=value) Color.rgb(91,109,98) else Color.rgb(43,76,62)
+            paint.color=if(theme!=null) { if(value!=null && tickValue<=value) theme.progressTextColor((tickValue/dial.maximum).toFloat()) else theme.secondary } else if(day) { if(value!=null && tickValue<=value) ReplicaDayPalette.progressTextColor((tickValue/dial.maximum).toFloat()) else ReplicaDayPalette.secondary } else if(value!=null && tickValue<=value) Color.rgb(91,109,98) else Color.rgb(43,76,62)
             c.drawLine(cx+cos(a).toFloat()*130,cy+sin(a).toFloat()*130,
                 cx+cos(a).toFloat()*135,cy+sin(a).toFloat()*135,paint)
         }
-        paint.style=Paint.Style.FILL; paint.color=if(day) ReplicaDayPalette.surface else Color.BLACK; c.drawCircle(cx,cy,123f,paint)
-        paint.style=Paint.Style.STROKE; paint.strokeWidth=2f; paint.color=if(day) ReplicaDayPalette.inactive else Color.rgb(18,67,52)
+        paint.style=Paint.Style.FILL; paint.color=theme?.surface ?: if(day) ReplicaDayPalette.surface else Color.BLACK; c.drawCircle(cx,cy,123f,paint)
+        paint.style=Paint.Style.STROKE; paint.strokeWidth=2f; paint.color=theme?.accent ?: if(day) ReplicaDayPalette.inactive else Color.rgb(18,67,52)
         c.drawCircle(cx,cy,126f,paint)
         if(value!=null) {
-            paint.color=if(day) ReplicaDayPalette.green else Color.rgb(75,232,192); paint.strokeWidth=2.5f
+            paint.color=theme?.accent ?: if(day) ReplicaDayPalette.green else Color.rgb(75,232,192); paint.strokeWidth=2.5f
             c.drawArc(RectF(cx-126,cy-126,cx+126,cy+126),135f,dial.sweep(value),false,paint)
         }
     }
-    /** Local dial coordinates: album blur cannot reach the scale, map or speed gauge. */
+    /** Crisp artwork stays in the inner well; its palette is shared with both gauge faces. */
     private fun replicaDialMusic(c: Canvas) {
         val info = snapshot.music.info
         val title = info.title.orEmpty().ifBlank { info.album.orEmpty().ifBlank { info.artist.orEmpty() } }
         val bitmap = snapshot.music.artwork?.takeIf { title.isNotBlank() && !it.isRecycled }
-        dialMusicBackdrop.update(bitmap)
+        dialMusicBackdrop.update(bitmap.takeIf { artworkTheme == null })
         c.save()
         c.clipPath(Path().apply { addCircle(0f, 0f, 122f, Path.Direction.CW) })
-        if (bitmap != null) dialMusicBackdrop.draw(c, RectF(-123f, -123f, 123f, 123f), fadeEdges = false, light = day)
+        if (bitmap != null && artworkTheme == null) dialMusicBackdrop.draw(c, RectF(-123f, -123f, 123f, 123f), fadeEdges = false, light = day)
         if (title.isNotBlank()) {
             // About 203 physical pixels; rounded corners remain fully inside the inner well.
             val cover = RectF(-83f, -92f, 83f, 74f)
@@ -482,7 +544,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
                 c.drawBitmap(bitmap, crop, cover, paint); c.restore()
             } else text(c,"♪",0f,20f,70f,muted,Paint.Align.CENTER,180f)
             musicText(c,title,0f,94f,17f,white,Paint.Align.CENTER,140f)
-            musicText(c,info.artist.orEmpty(),0f,111f,13f,if(day) ReplicaDayPalette.secondary else Color.rgb(185,196,190),Paint.Align.CENTER,80f)
+            musicText(c,info.artist.orEmpty(),0f,111f,13f,artworkTheme?.secondary ?: if(day) ReplicaDayPalette.secondary else Color.rgb(185,196,190),Paint.Align.CENTER,80f)
         } else {
             text(c,"♪",0f,-4f,58f,muted,Paint.Align.CENTER,150f)
             text(c,context.getString(R.string.dashboard_no_music),0f,35f,18f,muted,Paint.Align.CENTER,196f)
@@ -504,18 +566,21 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         } else text(c,"♪",art.centerX(),art.centerY()+30,90f,muted,Paint.Align.CENTER,160f)
         val title=if(hasTrack) info.title.orEmpty().ifBlank { info.album.orEmpty().ifBlank { info.artist.orEmpty() } }
             else label(R.string.dashboard_no_music)
-        musicText(c,title,r.centerX(),r.bottom-101,32f,if(hasTrack) Color.WHITE else Color.rgb(166,184,174),Paint.Align.CENTER,r.width()-48)
+        musicText(c,title,r.centerX(),r.bottom-101,32f,if(hasTrack) white else muted,Paint.Align.CENTER,r.width()-48)
         musicText(c,listOfNotNull(info.artist?.takeIf { it.isNotBlank() },info.album?.takeIf { it.isNotBlank() }).joinToString(" · "),
-            r.centerX(),r.bottom-64,24f,Color.rgb(190,205,198),Paint.Align.CENTER,r.width()-48)
+            r.centerX(),r.bottom-64,24f,muted,Paint.Align.CENTER,r.width()-48)
         if(hasTrack) {
             val duration=info.durationMillis?.takeIf { it>0 }; val elapsed=info.elapsedMillis?.coerceAtLeast(0)
             val left=r.centerX()-210f
             box(c,RectF(left,r.bottom-31,left+420,r.bottom-26),Color.argb(115,160,170,165),3f)
             if(duration!=null && elapsed!=null) box(c,RectF(left,r.bottom-31,
-                left+420*(elapsed.toFloat()/duration).coerceIn(0f,1f),r.bottom-26),Color.WHITE,3f)
+                left+420*(elapsed.toFloat()/duration).coerceIn(0f,1f),r.bottom-26),artworkTheme?.accent ?: if(day) ReplicaDayPalette.green else Color.WHITE,3f)
         }
     }
     private fun replicaTires(c: Canvas,r: RectF) {
+        c.save()
+        val fit=min(1f,r.height()/396f)
+        c.scale(fit,fit,r.centerX(),r.centerY())
         vehicleSilhouette(c,r.centerX(),r.centerY())
         val tires=listOf(
             Triple(VehicleSignal.TIRE_FL_BAR,R.string.dashboard_front_left,PointF(r.centerX()-218,r.centerY()-100)),
@@ -523,15 +588,16 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             Triple(VehicleSignal.TIRE_RL_BAR,R.string.dashboard_rear_left,PointF(r.centerX()-218,r.centerY()+86)),
             Triple(VehicleSignal.TIRE_RR_BAR,R.string.dashboard_rear_right,PointF(r.centerX()+218,r.centerY()+86)))
         tires.forEach { (signal,title,p) ->
-            text(c,label(title),p.x,p.y-25,21f,Color.rgb(166,184,174),Paint.Align.CENTER,160f)
+            text(c,label(title),p.x,p.y-25,21f,muted,Paint.Align.CENTER,160f)
             text(c,snapshot.number(signal)?.let { String.format(Locale.US,"%.2f",it) } ?: "—",
-                p.x,p.y+22,43f,Color.WHITE,Paint.Align.CENTER,180f)
-            text(c,"bar",p.x,p.y+52,21f,Color.rgb(166,190,178),Paint.Align.CENTER,100f)
+                p.x,p.y+22,43f,white,Paint.Align.CENTER,180f)
+            text(c,"bar",p.x,p.y+52,21f,muted,Paint.Align.CENTER,100f)
         }
+        c.restore()
     }
-    /** A single, opaque, centered strip is drawn last on every Replica page. */
+    /** A single, opaque, centered strip is drawn last on every full dashboard page. */
     private inline fun replicaIcon(c: Canvas, x: Float, y: Float, sourceSize: Float, targetSize: Float = REPLICA_STATUS_ICON_SIZE, draw: () -> Unit) {
-        c.save(); c.scale(targetSize / sourceSize, targetSize / sourceSize, x, y)
+        c.save(); c.scale(targetSize * panelScale / sourceSize, targetSize * panelScale / sourceSize, x, y)
         draw(); c.restore()
     }
     // Only the edge facing the content is rounded; the screen edge stays flush.
@@ -541,7 +607,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private fun replicaBar(c: Canvas, bounds: RectF, roundTop: Boolean) {
         replicaBarPath.reset()
         replicaBarPath.addRoundRect(bounds, if (roundTop) replicaBottomBarRadii else replicaTopBarRadii, Path.Direction.CW)
-        paint.color = if(day) ReplicaDayPalette.surface else bg; paint.style = Paint.Style.FILL
+        paint.color = artworkTheme?.surface ?: if(day) { if(style.concept) 0xffe4e3e1.toInt() else ReplicaDayPalette.surface } else bg; paint.style = Paint.Style.FILL
         c.drawPath(replicaBarPath, paint)
     }
     private fun replicaStatus(c: Canvas) {
@@ -552,16 +618,16 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         replicaIcon(c,600f,30f,40f) { replicaHeadlamp(c,600f,30f) }
         replicaIcon(c,666.67f,30f,34f) { lampIcon(c,VehicleSignal.HIGH_BEAM,666.67f,30f) }
         replicaIcon(c,733.33f,30f,36f) { lampIcon(c,VehicleSignal.POSITION_LIGHT,733.33f,30f) }
-        replicaIcon(c,800f,30f,36f) { lampIcon(c,VehicleSignal.REAR_FOG,800f,30f) }
-        if(snapshot.vehicle[VehicleSignal.HILL_DESCENT_ACTIVE]?.value==true) hillDescentGlyph?.apply {
-            setTint(green); setBounds(832,12,868,48); draw(c)
+        replicaIcon(c,794f,30f,36f) { lampIcon(c,VehicleSignal.REAR_FOG,794f,30f) }
+        if(snapshot.vehicle[VehicleSignal.HILL_DESCENT_ACTIVE]?.value==true) replicaIcon(c,850f,30f,36f,32f) {
+            hillDescentGlyph?.apply { setTint(green); setBounds(832,12,868,48); draw(c) }
         }
         replicaIcon(c,906f,30f,50f) { laneCenteringIcon(c,906f,30f) }
         val assist=snapshot.assistance
         val color=when { assist.state==DashboardAssistState.FAULT -> amber; snapshot.assistanceIconActive -> green; else -> muted }
         when(assist.mode) {
             DashboardAssistMode.GPILOT -> replicaIcon(c,964f,30f,40f) { steeringIcon(c,964f,30f,color) }
-            DashboardAssistMode.ACC -> replicaIcon(c,964f,30f,36f) { followingCarIcon(c,964f,30f,color) }
+            DashboardAssistMode.ACC -> replicaIcon(c,964f,30f,48f) { followingCarIcon(c,964f,30f,color) }
             else -> replicaIcon(c,964f,30f,40f,28f) { cruiseIcon(c,964f,30f,color) }
         }
         val title=when(assist.mode) {
@@ -579,12 +645,14 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         if(assist.showTarget) text(c,(snapshot.accSetSpeedKph?.roundToInt()?.toString() ?: "—")+" km/h",
             targetX,40f,27f,if(snapshot.accSetSpeedKph!=null) white else muted,maxWidth=140f)
         if(assist.showGap) {
-            replicaIcon(c,1254f,30f,36f) { followingCarIcon(c,1254f,30f,white) }
+            replicaIcon(c,1254f,30f,48f) { followingCarIcon(c,1254f,30f,white) }
             val gap=snapshot.followGap ?: 0
+            c.save(); c.scale(panelScale,panelScale,1302f,30f)
             for(i in 0..2) {
-                val halfWidth=22f-i*6f
+                val halfWidth=20f-i*6f
                 box(c,RectF(1302f-halfWidth,18f+i*11,1302f+halfWidth,22f+i*11),if(i<gap) white else line,2f)
             }
+            c.restore()
         }
         replicaIcon(c,1374f,30f,30f) { lampIcon(c,VehicleSignal.RIGHT_TURN,1374f,30f) }
     }
@@ -602,20 +670,20 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         val hold = snapshot.vehicle[VehicleSignal.AUTO_HOLD_ACTIVE]?.value == true
         val parking = snapshot.vehicle[VehicleSignal.PARKING_BRAKE_ON]?.value == true
         // Both indicators keep a stable slot; confirmed AutoHold is green and confirmed parking brake is red.
-        val contentWidth = 100f + 28f + 100f + 28f + 174f + 24f +
-            48f + 48f + 44f
+        // Fixed cells leave room for 1.5× glyphs; values, separators and the panel never scale.
+        val contentWidth = 706f
         val left = 960f - contentWidth / 2f
         replicaBar(c, RectF(left-20f,532f-REPLICA_FOOTER_HEIGHT,left+contentWidth+20f,532f), roundTop = true)
         text(c,clockFormat.format(Date()),left+50f,514f,24f,white,Paint.Align.CENTER,100f)
-        for(x in listOf(left+114f,left+242f)) box(c,RectF(x,492f,x+1,518f),muted,0f)
+        for(x in listOf(left+114f,left+242f,left+464f,left+556f,left+648f))
+            box(c,RectF(x,492f,x+1,518f),muted,0f)
         text(c,(snapshot.ambientC?.roundToInt()?.toString() ?: "—")+"°C",left+178f,514f,24f,white,Paint.Align.CENTER,100f)
         val value=(snapshot.rangeKm?.roundToInt()?.toString() ?: "—")+" km"
-        replicaIcon(c,left+270f,505f,34f,26f) { fuelIcon(c,left+270f,505f) }
-        text(c,value,left+300f,514f,24f,white,maxWidth=130f)
-        var next = left+454f
-        replicaIcon(c,next+24f,505f,38f) { brakeIcon(c,next+24f,505f,"A",if (hold) green else muted) }; next += 48f
-        replicaIcon(c,next+24f,505f,38f) { brakeIcon(c,next+24f,505f,"P",if (parking) red else muted) }; next += 48f
-        text(c,snapshot.gear,next+22f,516f,30f,white,Paint.Align.CENTER,44f)
+        replicaIcon(c,left+274f,505f,34f,26f) { fuelIcon(c,left+274f,505f) }
+        text(c,value,left+308f,514f,24f,white,maxWidth=140f)
+        replicaIcon(c,left+510f,505f,38f) { brakeIcon(c,left+510f,505f,"A",if (hold) green else muted,active=hold) }
+        replicaIcon(c,left+602f,505f,38f) { brakeIcon(c,left+602f,505f,"P",if (parking) red else muted,active=parking) }
+        text(c,snapshot.gear,left+684f,516f,30f,white,Paint.Align.CENTER,44f)
     }
     private fun coolantIcon(c:Canvas,x:Float,y:Float) {
         paint.style=Paint.Style.STROKE; paint.strokeWidth=2.6f; paint.color=white
@@ -627,27 +695,35 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             quadTo(x+11,y+dy-5,x+17,y+dy)
         },paint)
     }
-    private fun brakeIcon(c:Canvas,x:Float,y:Float,value:String,color:Int) {
-        paint.style=Paint.Style.STROKE; paint.strokeWidth=2.2f; paint.color=color
+    private fun brakeIcon(c:Canvas,x:Float,y:Float,value:String,color:Int,active:Boolean) {
+        paint.style=Paint.Style.STROKE; paint.strokeWidth=if(active) 3.8f else 2.2f; paint.color=color
         c.drawCircle(x,y,13f,paint)
         c.drawArc(RectF(x-19,y-19,x+19,y+19),145f,70f,false,paint)
         c.drawArc(RectF(x-19,y-19,x+19,y+19),-35f,70f,false,paint)
-        text(c,value,x,y+6,17f,color,Paint.Align.CENTER,20f)
+        text(c,value,x,y+6,17f,color,Paint.Align.CENTER,20f,bold=active)
     }
-    private fun replicaMusicBackground(c:Canvas) {
-        // Day gauges remain light; the surrounding screen stays black, including the music page.
-        if (day) return
+    private fun updateArtworkTheme() {
         val info=snapshot.music.info
         val hasTrack=!info.title.isNullOrBlank() || !info.artist.isNullOrBlank() || !info.album.isNullOrBlank()
-        musicBackdrop.update(snapshot.music.artwork.takeIf { hasTrack })
-        val r=RectF(DashboardLayout.REPLICA_LEFT_DIAL_X,0f,DashboardLayout.REPLICA_RIGHT_DIAL_X,532f)
-        musicBackdrop.draw(c,r,light = false)
+        // Explicit playback feedback gates the full-screen theme; pause returns to the chosen day/night palette.
+        val cover=snapshot.music.artwork.takeIf { style==DashboardStyle.REPLICA && hasTrack && info.playing }
+        musicBackdrop.update(cover)
+        val next=musicBackdrop.palette
+        if(next!=artworkTheme) {
+            artworkTheme=next
+            artworkSweep=next?.let { theme ->
+                SweepGradient(0f,0f,theme.sweep+theme.sweep.last(),floatArrayOf(0f,.1875f,.375f,.5625f,.75f,1f)).apply {
+                    setLocalMatrix(Matrix().apply { setRotate(135f) })
+                }
+            }
+        }
     }
+    internal val artworkBlurBuildCount get() = musicBackdrop.buildCount
     override fun onDetachedFromWindow() {
         removeCallbacks(marqueeFrame); nextMarqueeAt = Long.MAX_VALUE
         speedFace.clear(); rpmFace.clear()
         lastVisualState = null; lastVisualLayout = null
-        musicBackdrop.clear()
+        musicBackdrop.clear(); artworkTheme=null; artworkSweep=null
         dialMusicBackdrop.clear()
         musicMarquee.clear()
         super.onDetachedFromWindow()
@@ -693,7 +769,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     }
     private fun navigation(c: Canvas, r: RectF) {
         val nav = snapshot.navigation ?: return
-        box(c,r,when(style) {
+        box(c,r,if(style.concept) { if(day) 0xffe4e3e1.toInt() else 0xe6222537.toInt() } else when(style) {
             DashboardStyle.REPLICA -> if(day) Color.argb(242,248,250,247) else Color.argb(205,6,18,24)
             DashboardStyle.MIDNIGHT -> Color.argb(235,6,18,24)
             else -> panel
@@ -712,6 +788,20 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         glyph?.setBounds((r.left+14).toInt(), (r.top+13).toInt(), (r.left+14+size).toInt(), (r.bottom-13).toInt()); glyph?.draw(c)
         val x = r.left + size + 32
         val distance = if (nav.distanceMeters < 0) "—" else if (nav.distanceMeters <= 20) context.getString(R.string.turn_card_now) else distance(nav.distanceMeters)
+        if (style.concept) {
+            val dividerX=r.left+size+24f
+            box(c,RectF(dividerX,r.top+16,dividerX+1,r.bottom-16),muted,0f)
+            text(c,distance,dividerX+20,r.top+39,32f,white,maxWidth=r.right-dividerX-38)
+            text(c,nav.road,dividerX+20,r.bottom-17,22f,muted,maxWidth=r.right-dividerX-38)
+            val remaining=listOfNotNull(nav.remainingMeters?.takeIf { it>=0 }?.let { distance(it.toInt()) },
+                nav.remainingSeconds?.takeIf { it>=0 }?.let { "${(it+59)/60} min" }).joinToString(" · ")
+            if(remaining.isNotEmpty()) {
+                val summary=RectF(780f,420f,1140f,466f)
+                box(c,summary,if(day) 0xeefafafa.toInt() else 0xe609131c.toInt(),14f)
+                text(c,remaining,960f,450f,23f,white,Paint.Align.CENTER,330f)
+            }
+            return
+        }
         if (style == DashboardStyle.REPLICA) {
             text(c, distance, x, r.top+35, 31f, white, maxWidth=r.width()-size-246)
             text(c, nav.road, x, r.bottom-14, 23f, muted, maxWidth=r.width()-size-246)
@@ -766,6 +856,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         text(c, remaining, r.left+23, r.bottom-18, 21f, accent, maxWidth=r.width()-46)
     }
     private fun music(c: Canvas, r: RectF) {
+        if(style.concept) { conceptMusic(c,r);return }
         if (style == DashboardStyle.REPLICA) { replicaMusic(c, r); return }
         if (style == DashboardStyle.MIDNIGHT) { midnightMusic(c, r); return }
         contentPanel(c, r)
@@ -792,6 +883,30 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         val duration=info.durationMillis?.takeIf { it>0 }; val elapsed=info.elapsedMillis?.coerceAtLeast(0)
         if (duration!=null && elapsed!=null) box(c,RectF(left,y,left+(right-left)*(elapsed.toFloat()/duration).coerceIn(0f,1f),y+5),accent,3f)
         // The compact Panorama card intentionally has no elapsed/total time labels or controls.
+    }
+    private fun conceptMusic(c: Canvas, r: RectF) {
+        val info=snapshot.music.info
+        val title=info.title.orEmpty().ifBlank { info.album.orEmpty().ifBlank { info.artist.orEmpty() } }
+        val art=snapshot.music.artwork?.takeUnless { it.isRecycled || title.isBlank() }
+        val side=min(r.width()-20f,r.height()-72f).coerceAtLeast(10f)
+        val cover=RectF(r.centerX()-side/2,r.top,r.centerX()+side/2,r.top+side)
+        if(art!=null) {
+            c.save();c.clipPath(Path().apply { addRoundRect(cover,10f,10f,Path.Direction.CW) })
+            val crop=min(art.width,art.height)
+            paint.style=Paint.Style.FILL;paint.shader=null;paint.color=Color.WHITE
+            c.drawBitmap(art,Rect((art.width-crop)/2,(art.height-crop)/2,(art.width+crop)/2,(art.height+crop)/2),cover,paint);c.restore()
+        } else text(c,"♪",r.centerX(),cover.centerY()+20,64f,muted,Paint.Align.CENTER,r.width())
+        musicText(c,title.ifBlank { label(R.string.dashboard_no_music) },r.centerX(),cover.bottom+25,23f,white,Paint.Align.CENTER,r.width()-16)
+        musicText(c,info.artist.orEmpty(),r.centerX(),cover.bottom+47,18f,muted,Paint.Align.CENTER,r.width()-16)
+        if(title.isNotBlank()) {
+            val duration=info.durationMillis?.takeIf { it>0 }
+            val elapsed=info.elapsedMillis?.coerceAtLeast(0)
+            if(duration!=null && elapsed!=null) {
+                val y=r.bottom-5f
+                box(c,RectF(r.left+10,y,r.right-10,y+3),line,2f)
+                box(c,RectF(r.left+10,y,r.left+10+(r.width()-20)*(elapsed.toFloat()/duration).coerceIn(0f,1f),y+3),accent,2f)
+            }
+        }
     }
     private fun durationLabel(millis: Long) = String.format(Locale.US, "%d:%02d", millis/60000, (millis/1000)%60)
     private fun contentPanel(c: Canvas, r: RectF) {

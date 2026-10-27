@@ -31,7 +31,7 @@ class ReplicaDayAppearanceTest {
     }
     private fun frame(view: DashboardCanvas) = Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
 
-    @Test fun daytimeKeepsLightDialsOnBlackSurroundingsForAllPages() {
+    @Test fun daytimeUsesWhiteSurroundingsAndCentralOverlayForAllPages() {
         val view = DashboardCanvas(RuntimeEnvironment.getApplication()).apply {
             style = DashboardStyle.REPLICA; appearance = DashboardAppearance.DAY
         }
@@ -48,10 +48,10 @@ class ReplicaDayAppearanceTest {
         for (mode in listOf(DashboardMode.NAVIGATION,DashboardMode.MUSIC,DashboardMode.TIRES)) {
             view.mode = mode
             val image = frame(view)
-            assertEquals(Color.BLACK,image.getPixel(12,12))
-            assertEquals(Color.BLACK,image.getPixel(600,100))
+            assertEquals(Color.WHITE,image.getPixel(12,12))
+            assertEquals(Color.WHITE,image.getPixel(600,100))
             assertTrue(Color.luminance(image.getPixel(266,300)) > .8f)
-            File(out,"v46-day-black-${mode.name.lowercase()}.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
+            File(out,"v52-day-white-${mode.name.lowercase()}.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
             image.recycle()
         }
     }
@@ -189,7 +189,7 @@ class ReplicaDayAppearanceTest {
             VehicleSignal.AUTO_HEADLIGHTS to VehicleReading(true,0,0),VehicleSignal.POSITION_LIGHT to VehicleReading(true,0,0),
             VehicleSignal.HIGH_BEAM to VehicleReading(false,0,0),VehicleSignal.REAR_FOG to VehicleReading(false,0,0),
             VehicleSignal.LEFT_TURN to VehicleReading(true,0,0),VehicleSignal.RIGHT_TURN to VehicleReading(false,0,0)),
-            ClusterMusicState.Snapshot(CarPlayNowPlaying(title="夜曲 · 测试曲目",artist="测试歌手",playing=true,durationMillis=223000,elapsedMillis=97000),cover),
+            ClusterMusicState.Snapshot(CarPlayNowPlaying(title="夜曲 · 测试曲目",artist="测试歌手",playing=false,durationMillis=223000,elapsedMillis=97000),cover),
             ClusterTurnGuidance(3,0,800,"滨江大道 · 测试导航",remainingSeconds=720,remainingMeters=8400))
         val out=File("build/reports/native-dashboard").apply { mkdirs() }
         for(mode in listOf(DashboardMode.NAVIGATION,DashboardMode.MUSIC,DashboardMode.TIRES)) {
@@ -211,6 +211,13 @@ class ReplicaDayAppearanceTest {
             assertEquals(ReplicaDayPalette.background,bitmap.getPixel(12,12))
             assertEquals(ReplicaDayPalette.surface,bitmap.getPixel(340,270))
             assertEquals(Color.rgb(218,155,107),bitmap.getPixel(1654,240)) // Actual cover stays unfiltered.
+            if (mode == DashboardMode.MUSIC) {
+                fun hasColor(color: Int, top: Int, bottom: Int): Boolean =
+                    (top..bottom).any { y -> (600..1320).any { x -> bitmap.getPixel(x,y) == color } }
+                assertTrue("Music title must remain legible on white", hasColor(ReplicaDayPalette.text,335,365))
+                assertTrue("Artist must remain legible on white", hasColor(ReplicaDayPalette.secondary,370,403))
+                assertTrue("Playback progress must remain visible", hasColor(ReplicaDayPalette.green,428,442))
+            }
             File(out,"replica-day-${mode.name.lowercase()}-fixture.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
             if(mode==DashboardMode.NAVIGATION) {
                 // A palette change must never tint pixels belonging to the live map video.

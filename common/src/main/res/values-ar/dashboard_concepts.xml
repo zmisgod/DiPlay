@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_dashboard_track">حلبة السباق</string>
+    <string name="settings_dashboard_polar">الحلقتان القطبيتان (ليلي)</string>
+    <string name="settings_dashboard_obsidian">بانوراما</string>
+    <string name="settings_dashboard_starfield">سماء مرصعة بالنجوم</string>
+    <string name="settings_dashboard_panel_scale">حجم أيقونات الوحدتين العلوية والسفلية</string>
+    <string name="settings_dashboard_panel_default">افتراضي (1×)</string>
+    <string name="settings_dashboard_mirror_main">عكس شاشة CarPlay الرئيسية على لوحة العدادات</string>
+    <string name="settings_dashboard_mirror_main_hint">يعرض الشاشة الرئيسية كاملة بما فيها التطبيقات الأخرى. عند 100% تظهر الصورة دون تشويه؛ التكبير يقتطع الحواف. يمكن ضبط الموضع أدناه. يسري فورًا دون تغيير الشاشة الرئيسية.</string>
+    <string name="settings_dashboard_mirror_zoom">تكبير الصورة المعكوسة</string>
+    <string name="settings_dashboard_mirror_x">الإزاحة الأفقية</string>
+    <string name="settings_dashboard_mirror_y">الإزاحة الرأسية</string>
+    <string name="settings_dashboard_mirror_reset">إعادة ضبط الموضع والتكبير</string>
+    <string name="settings_dashboard_palette_title">ألوان لوحة العدادات نهارًا وليلًا</string>
+</resources>

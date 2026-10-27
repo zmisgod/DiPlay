@@ -852,6 +852,90 @@ class AdaptiveSettingsUiTest {
     @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
     fun microphoneSettingsArabicLargeFont() = captureMicrophoneSettings("arabic")
 
+    @Test @Config(sdk=[29],qualifiers="zh-rCN-w320dp-h700dp-xhdpi")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun dashboardControlsCompactLargeFont() = captureDashboardControls("compact")
+    @Test @Config(sdk=[29],qualifiers="zh-rCN-w1000dp-h700dp-xhdpi")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun dashboardControlsFullLargeFont() = captureDashboardControls("full")
+    @Test @Config(sdk=[29],qualifiers="ar-ldrtl-w320dp-h700dp-xhdpi")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun dashboardControlsArabicLargeFont() = captureDashboardControls("arabic")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test @Config(qualifiers = "zh-rCN-w360dp-h800dp")
+    fun navigationCaptureCompactLargeFont() = captureNavigationControls("compact-zh")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test @Config(qualifiers = "zh-rCN-w1280dp-h800dp")
+    fun navigationCaptureFullLargeFont() = captureNavigationControls("full-zh")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test @Config(qualifiers = "ar-w360dp-h800dp")
+    fun navigationCaptureArabicLargeFont() = captureNavigationControls("compact-ar")
+
+    private fun captureNavigationControls(name: String) {
+        RuntimeEnvironment.setFontScale(1.5f)
+        val screen = openSettings()
+        ReflectionHelpers.setField(screen, "settingsCategory", SettingsCategory.ADVANCED)
+        ReflectionHelpers.callInstanceMethod<Unit>(screen, "render")
+        assertTrue(texts(screen).any { it.text == screen.getString(R.string.settings_nav_capture_title) })
+        assertEquals(setOf(SettingsCategory.ADVANCED), SettingsInformationArchitecture.sectionsByCategory
+            .filterValues { SettingsSection.NAVIGATION_CAPTURE in it }.keys)
+        val panel = LinearLayout(screen).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(android.graphics.Color.rgb(21,31,45))
+        }
+        ReflectionHelpers.callInstanceMethod<Unit>(screen, "navigationCaptureControls",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, panel))
+        ReflectionHelpers.callInstanceMethod<Unit>(screen, "normalizeSpacing",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, panel),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!, true))
+        panel.layoutDirection = screen.resources.configuration.layoutDirection
+        val width = (screen.resources.configuration.screenWidthDp * screen.resources.displayMetrics.density).toInt()
+        panel.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
+        panel.layout(0,0,width,panel.measuredHeight)
+        for (view in descendants(panel).filterIsInstance<TextView>()) {
+            val layout = view.layout ?: continue
+            for (line in 0 until layout.lineCount) assertEquals("Truncated: ${view.text}", 0, layout.getEllipsisCount(line))
+        }
+        assertFalse(descendants(panel).filterIsInstance<Switch>().single().isChecked)
+        val bitmap = Bitmap.createBitmap(width,panel.height,Bitmap.Config.ARGB_8888)
+        panel.draw(Canvas(bitmap))
+        val path = Paths.get("build/reports/navigation-capture/$name.png"); Files.createDirectories(path.parent)
+        Files.newOutputStream(path).use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }; bitmap.recycle()
+    }
+
+    private fun captureDashboardControls(name:String) {
+        RuntimeEnvironment.setFontScale(1.5f)
+        val screen=openSettings()
+        NativeDashboardSettings.setMirrorMain(screen,true)
+        val panel=LinearLayout(screen).apply {
+            orientation=LinearLayout.VERTICAL
+            setBackgroundColor(android.graphics.Color.rgb(21,31,45))
+            val padding=(16*resources.displayMetrics.density).toInt();setPadding(padding,padding,padding,padding)
+        }
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"dashboardPresentationControls",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java,panel))
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"normalizeSpacing",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java,panel),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!,true))
+        panel.layoutDirection=screen.resources.configuration.layoutDirection
+        val width=(screen.resources.configuration.screenWidthDp*screen.resources.displayMetrics.density).toInt()
+        panel.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED))
+        panel.layout(0,0,width,panel.measuredHeight)
+        for(view in descendants(panel).filterIsInstance<TextView>()) {
+            val layout=view.layout ?: continue
+            for(line in 0 until layout.lineCount) assertEquals("Truncated: ${view.text}",0,layout.getEllipsisCount(line))
+        }
+        val image=Bitmap.createBitmap(width,panel.height,Bitmap.Config.ARGB_8888)
+        panel.draw(Canvas(image))
+        val path=Paths.get("build/reports/dashboard-controls/$name.png");Files.createDirectories(path.parent)
+        Files.newOutputStream(path).use { image.compress(Bitmap.CompressFormat.PNG,100,it) };image.recycle()
+        val sliders=descendants(panel).filterIsInstance<SeekBar>().toList()
+        assertEquals(3,sliders.size)
+        // No forced reconnect from changing local placement.
+        assertTrue(descendants(panel).filterIsInstance<TextView>().any { it.text.contains(screen.getString(R.string.settings_dashboard_panel_scale)) })
+    }
+
     private fun captureMicrophoneSettings(name: String) {
         RuntimeEnvironment.setFontScale(1.5f)
         val screen = openSettings()

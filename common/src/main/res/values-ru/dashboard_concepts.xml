@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_dashboard_track">Гоночный трек</string>
+    <string name="settings_dashboard_polar">Полярные кольца (ночь)</string>
+    <string name="settings_dashboard_obsidian">Панорама</string>
+    <string name="settings_dashboard_starfield">Звёздное небо</string>
+    <string name="settings_dashboard_panel_scale">Размер верхних и нижних значков</string>
+    <string name="settings_dashboard_panel_default">По умолчанию (1×)</string>
+    <string name="settings_dashboard_mirror_main">Дублировать основной CarPlay на приборную панель</string>
+    <string name="settings_dashboard_mirror_main_hint">Показывает весь основной экран, включая другие приложения. При 100% изображение помещается без искажений; увеличение обрезает края. Положение настраивается ниже. Применяется сразу, основной экран не меняется.</string>
+    <string name="settings_dashboard_mirror_zoom">Масштаб копии экрана</string>
+    <string name="settings_dashboard_mirror_x">Смещение по горизонтали</string>
+    <string name="settings_dashboard_mirror_y">Смещение по вертикали</string>
+    <string name="settings_dashboard_mirror_reset">Сбросить положение и масштаб</string>
+    <string name="settings_dashboard_palette_title">Дневные и ночные цвета</string>
+</resources>

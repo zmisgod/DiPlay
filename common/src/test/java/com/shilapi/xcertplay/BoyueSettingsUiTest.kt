@@ -76,7 +76,7 @@ class BoyueSettingsUiTest {
         try {
             ReflectionHelpers.callInstanceMethod<Unit>(screen, "openSettingsCategory",
                 ReflectionHelpers.ClassParameter.from(SettingsCategory::class.java, SettingsCategory.ADVANCED))
-            val title = screen.getString(R.string.settings_dashboard_appearance)
+            val title = screen.getString(R.string.settings_dashboard_palette_title)
             nodes(screen.window.decorView).filterIsInstance<android.widget.Button>()
                 .single { it.text.startsWith(title + " · ") }.performClick()
             val dialog = ShadowAlertDialog.getLatestAlertDialog()
@@ -263,13 +263,13 @@ class BoyueSettingsUiTest {
                         }
                         captureOverlayRows(root)
                     }
-                    assertEquals(style == DashboardStyle.REPLICA, texts(root).any { it.startsWith(screen.getString(R.string.settings_dashboard_appearance) + " · ") })
+                    assertEquals(style == DashboardStyle.REPLICA, texts(root).any { it.startsWith(screen.getString(R.string.settings_dashboard_palette_title) + " · ") })
                     if (style == DashboardStyle.REPLICA) {
                         assertTrue(texts(root).any { it.contains(screen.getString(R.string.settings_dashboard_replica)) })
                         assertEquals(listOf(DashboardMode.MUSIC,DashboardMode.NAVIGATION,DashboardMode.TIRES),NativeDashboardSettings.modes(screen))
                     }
                     fun captureContentKey(view: View) {
-                        val mapRows = mapOf(R.string.settings_dashboard_appearance to "appearance", R.string.settings_dashboard_map_size to "map-size",
+                        val mapRows = mapOf(R.string.settings_dashboard_palette_title to "appearance", R.string.settings_dashboard_map_size to "map-size",
                             R.string.settings_dashboard_map_position to "map-position")
                         val mapRow = mapRows.keys.firstOrNull { view is android.widget.Button && view.text.startsWith(screen.getString(it) + " · ") }
                         if (view is android.widget.Button && mapRow != null) {

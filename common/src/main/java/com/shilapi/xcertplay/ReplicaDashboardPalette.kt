@@ -4,8 +4,9 @@ import android.graphics.Color
 
 /** Daylight colors for classic gauges and overlay chrome; never applied to decoded video pixels. */
 internal object ReplicaDayPalette {
-    val background = Color.BLACK
-    val surface = Color.rgb(248,250,247)
+    val background = Color.WHITE
+    val centerOverlay = Color.WHITE
+    val surface = Color.WHITE
     val text = Color.rgb(24,44,37)
     val secondary = Color.rgb(81,99,90)
     val inactive = Color.rgb(155,168,160)

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">Перегляд навігації (експериментально)</string>
+    <string name="settings_nav_capture_enable">Записувати дані навігації</string>
+    <string name="settings_nav_capture_description">Зберігає отримані повідомлення повністю, зокрема розташування та назви вулиць. Працює поза налаштуваннями й вмикається одразу. Увімкніть до підключення, потім почніть навігацію. На 256 МіБ запис зупиниться без видалення даних.</string>
+    <string name="settings_nav_capture_view">Переглянути поточні дані</string>
+    <string name="settings_nav_capture_export">Експорт усіх записів (ZIP)</string>
+    <string name="settings_nav_capture_preview_note">Перегляд скорочено; ZIP зберігає всі отримані байти навігації. Для інших повідомлень зберігаються лише ID та довжина. Відсутність даних не доводить, що телефон не надсилає маршрут.</string>
+    <string name="settings_nav_capture_mark">Позначити дію</string>
+    <string name="settings_nav_capture_mark_start">Навігацію розпочато</string>
+    <string name="settings_nav_capture_mark_destination">Пункт призначення змінено</string>
+    <string name="settings_nav_capture_mark_route">Вибрано інший маршрут</string>
+    <string name="settings_nav_capture_mark_end">Навігацію завершено</string>
+</resources>

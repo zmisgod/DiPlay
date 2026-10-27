@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_nav_capture_title">预览导航信息（实验性）</string>
+    <string name="settings_nav_capture_enable">记录导航数据</string>
+    <string name="settings_nav_capture_description">完整保存已接收到的导航消息，可能包含位置和路名。离开设置继续记录，立即生效。建议连接前开启，再开始导航；达到 256 MiB 后停止，不自动删除记录。</string>
+    <string name="settings_nav_capture_view">查看实时导航数据</string>
+    <string name="settings_nav_capture_export">导出全部导航记录（ZIP）</string>
+    <string name="settings_nav_capture_preview_note">界面仅显示摘要；ZIP 保留完整采集到的导航原始字节。其他消息仅记录编号与长度。未收到数据不代表手机没有发送路线。</string>
+    <string name="settings_nav_capture_mark">标记操作</string>
+    <string name="settings_nav_capture_mark_start">已开始导航</string>
+    <string name="settings_nav_capture_mark_destination">已更改目的地</string>
+    <string name="settings_nav_capture_mark_route">已选择另一条路线</string>
+    <string name="settings_nav_capture_mark_end">已结束导航</string>
+</resources>
