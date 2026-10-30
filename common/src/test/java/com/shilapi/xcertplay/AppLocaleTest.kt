@@ -154,4 +154,14 @@ class AppLocaleTest {
         assertEquals(View.LAYOUT_DIRECTION_LTR, wrapped.resources.configuration.layoutDirection)
         assertEquals(AppLocale.KOREAN, AppLocale.preference(context))
     }
+
+    @Test fun turkishIsSelectableOnAndroid13() {
+        AppLocale.save(context, AppLocale.TURKISH)
+        assertEquals("tr", manager.applicationLocales.toLanguageTags())
+        assertEquals(AppLocale.TURKISH, AppLocale.preference(context))
+        assertEquals("Türkçe", AppLocale.displayName(context, AppLocale.TURKISH))
+        assertSame(context, AppLocale.wrap(context))
+        AppLocale.save(context, AppLocale.SYSTEM)
+        assertTrue(manager.applicationLocales.isEmpty)
+    }
 }

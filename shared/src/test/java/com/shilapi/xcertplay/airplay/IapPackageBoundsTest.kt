@@ -27,7 +27,7 @@ class IapPackageBoundsTest {
 
     @Test fun iapTunnelClosesOnOversizedPackageHeader() {
         val closed = CountDownLatch(1)
-        val tunnel = IapTunnel(key, loopback)
+        val tunnel = IapTunnel(key, expectedPeer = loopback, bindAddress = loopback)
         val port = tunnel.listen(object : IapTunnel.Listener {
             override fun onClosed(cause: Throwable?) = closed.countDown()
         })
@@ -44,7 +44,7 @@ class IapPackageBoundsTest {
     @Test fun iapTunnelDeliversRealPackage() {
         val got = CountDownLatch(1)
         var body = ByteArray(0)
-        val tunnel = IapTunnel(key, loopback)
+        val tunnel = IapTunnel(key, expectedPeer = loopback, bindAddress = loopback)
         val port = tunnel.listen(object : IapTunnel.Listener {
             override fun onIap(bytes: ByteArray) { body = bytes; got.countDown() }
         })
@@ -63,7 +63,7 @@ class IapPackageBoundsTest {
     // Regression guard, not a reproduction: this channel already rejected an oversized header on main.
     @Test fun videoSettingsChannelClosesOnOversizedPackageHeader() {
         val logs = java.util.concurrent.CopyOnWriteArrayList<String>()
-        val channel = VideoSettingsChannel(key, key, logs::add)
+        val channel = VideoSettingsChannel(key, key, loopback, logs::add)
         val port = channel.listen(loopback)
         try {
             Socket(loopback, port).use { client ->
