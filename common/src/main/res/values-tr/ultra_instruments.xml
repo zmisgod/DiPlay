@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">CarPlay Ultra özgün göstergeleri (deneysel)</string>
+    <string name="settings_dashboard_ultra_hint">iPhone gösterge videosunu kullanır. Değişiklikten sonra CarPlay bağlantısını yenileyin. Uyumlu iOS ve tema gerekir; araçta doğrulama bekleniyor.</string>
+    <string name="settings_dashboard_ultra_waiting">CarPlay Ultra gösterge videosu bekleniyor. CarPlay bağlantısını yenileyin.</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">Приборы CarPlay Ultra (экспериментально)</string>
+    <string name="settings_dashboard_ultra_hint">Используется видеопоток приборов iPhone. После изменения переподключите CarPlay. Нужны совместимые iOS и тема; проверка на автомобиле ещё не выполнена.</string>
+    <string name="settings_dashboard_ultra_waiting">Ожидание приборов CarPlay Ultra. Переподключите CarPlay.</string>
+</resources>

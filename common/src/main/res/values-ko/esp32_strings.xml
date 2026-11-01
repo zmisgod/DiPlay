@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">ESP32 화면 (실험 기능)</string>
+    <string name="esp32_enable">ESP32로 전송</string>
+    <string name="esp32_hint">설정 및 권한 허용 후 USB가 자동 재연결됩니다. USB 지도는 최대 약 4fps, 다른 페이지와 Wi-Fi는 약 1초마다 갱신됩니다. 페어링 키를 입력하세요.</string>
+    <string name="esp32_host">기기 IP / 호스트 이름</string>
+    <string name="esp32_token">페어링 코드</string>
+    <string name="esp32_invalid">잘못된 주소 또는 코드</string>
+    <string name="esp32_navigation">내비게이션</string>
+    <string name="esp32_music">음악</string>
+    <string name="esp32_status">연결 상태</string>
+    <string name="esp32_connected">연결됨</string>
+    <string name="esp32_disconnected">연결 안 됨: 주소와 코드 확인</string>
+    <string name="esp32_no_navigation">내비게이션 정보 없음</string>
+    <string name="esp32_no_music">음악 정보 없음</string>
+    <string name="esp32_wheel">ESP32 페이지 전환</string>
+    <string name="esp32_carplay">계기판 내비 지도</string>
+    <string name="esp32_no_carplay">계기판 지도 대기 중</string>
+    <string name="esp32_orientation">전체 페이지 HUD 방향</string>
+    <string name="esp32_normal">기본</string>
+    <string name="esp32_mirror_vertical">상하 반전 (HUD)</string>
+    <string name="esp32_mirror_horizontal">좌우 반전</string>
+    <string name="esp32_rotate">180° 회전</string>
+    <string name="esp32_orientation_hint">HUD는 내비게이션, 음악, 지도에 모두 적용됩니다. 계기판 지도 중앙을 전체 화면으로 채우고 감지된 검은 여백을 잘라냅니다.</string>
+    <string name="esp32_upgrade">ESP32 펌웨어를 v0.2.0 이상으로 업데이트하세요</string>
+    <string name="esp32_transport">연결 방식</string>
+    <string name="esp32_usb_permission">USB 연결 / 허용</string>
+    <string name="esp32_usb_missing">데이터 케이블로 ESP32를 연결하고 설정에서 USB를 허용하세요</string>
+    <string name="esp32_instruction_left">전방 좌회전</string>
+    <string name="esp32_instruction_right">전방 우회전</string>
+    <string name="esp32_instruction_straight">직진</string>
+</resources>

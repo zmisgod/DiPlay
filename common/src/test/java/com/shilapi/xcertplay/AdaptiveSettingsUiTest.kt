@@ -871,6 +871,76 @@ class AdaptiveSettingsUiTest {
     @Test @Config(qualifiers = "ar-w360dp-h800dp")
     fun navigationCaptureArabicLargeFont() = captureNavigationControls("compact-ar")
 
+    @Test @Config(qualifiers = "zh-rCN-w360dp-h800dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun esp32CompactLargeFont() = captureEsp32Controls("compact-zh")
+    @Test @Config(qualifiers = "zh-rCN-w1280dp-h800dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun esp32FullLargeFont() = captureEsp32Controls("full-zh")
+    @Test @Config(qualifiers = "ar-ldrtl-w360dp-h800dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun esp32ArabicLargeFont() = captureEsp32Controls("compact-ar")
+
+    private fun captureEsp32Controls(name: String) {
+        RuntimeEnvironment.setFontScale(1.5f)
+        val screen=openSettings()
+        val panel=LinearLayout(screen).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(android.graphics.Color.rgb(21,31,45)) }
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"esp32Controls",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java,panel))
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"normalizeSpacing",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java,panel),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!,true))
+        panel.layoutDirection=screen.resources.configuration.layoutDirection
+        val width=(screen.resources.configuration.screenWidthDp*screen.resources.displayMetrics.density).toInt()
+        panel.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED))
+        panel.layout(0,0,width,panel.measuredHeight)
+        assertTrue(descendants(panel).filterIsInstance<TextView>().any { it.text.contains(screen.getString(R.string.esp32_carplay)) })
+        assertTrue(descendants(panel).filterIsInstance<TextView>().any { it.text.contains(screen.getString(R.string.esp32_orientation)) })
+        assertFalse(descendants(panel).filterIsInstance<Switch>().single().isChecked)
+        assertTrue(descendants(panel).filterIsInstance<TextView>().any { it.text.contains(screen.getString(R.string.esp32_host)) })
+        for(view in descendants(panel).filterIsInstance<TextView>()) {
+            val layout=view.layout ?: continue
+            for(line in 0 until layout.lineCount) assertEquals("Truncated: ${view.text}",0,layout.getEllipsisCount(line))
+        }
+        val bitmap=Bitmap.createBitmap(width,panel.height,Bitmap.Config.ARGB_8888);panel.draw(Canvas(bitmap))
+        val path=Paths.get("build/reports/esp32-settings/$name.png");Files.createDirectories(path.parent)
+        Files.newOutputStream(path).use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) };bitmap.recycle()
+    }
+
+    @Test @Config(qualifiers = "zh-rCN-w360dp-h800dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun ultraInstrumentSettingsCompactLargeFont() = captureUltraSettings("compact")
+    @Test @Config(qualifiers = "zh-rCN-w900dp-h800dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun ultraInstrumentSettingsFullLargeFont() = captureUltraSettings("full")
+    @Test @Config(qualifiers = "ar-w360dp-h800dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun ultraInstrumentSettingsArabicLargeFont() = captureUltraSettings("arabic")
+    private fun captureUltraSettings(name: String) {
+        RuntimeEnvironment.setFontScale(1.5f)
+        BoyueLSettings.select(context,true)
+        NativeDashboardSettings.setStyle(context,DashboardStyle.CARPLAY_ULTRA)
+        val screen=openSettings()
+        ReflectionHelpers.setField(screen,"settingsCategory",SettingsCategory.ADVANCED)
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"render")
+        layoutRoot(screen)
+        val hint=texts(screen).first { it.text == screen.getString(R.string.settings_dashboard_ultra_hint) }
+        assertTrue(texts(screen).any { it.text.contains(screen.getString(R.string.settings_dashboard_carplay_ultra)) })
+        var card=hint.parent as ViewGroup
+        // The direct control container contains the style selector and the original-mode explanation.
+        val width=(screen.resources.configuration.screenWidthDp * screen.resources.displayMetrics.density).toInt()
+        card.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED))
+        card.layout(0,0,width,card.measuredHeight)
+        for (view in descendants(card).filterIsInstance<TextView>()) {
+            val layout=view.layout ?: continue
+            for(line in 0 until layout.lineCount) assertEquals("Truncated: ${view.text}",0,layout.getEllipsisCount(line))
+        }
+        val bitmap=Bitmap.createBitmap(width,card.height,Bitmap.Config.ARGB_8888)
+        card.draw(Canvas(bitmap))
+        val file=Paths.get("build/reports/ultra-settings/$name.png");Files.createDirectories(file.parent)
+        Files.newOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) };bitmap.recycle()
+    }
+
     private fun captureNavigationControls(name: String) {
         RuntimeEnvironment.setFontScale(1.5f)
         val screen = openSettings()
@@ -934,6 +1004,49 @@ class AdaptiveSettingsUiTest {
         assertEquals(3,sliders.size)
         // No forced reconnect from changing local placement.
         assertTrue(descendants(panel).filterIsInstance<TextView>().any { it.text.contains(screen.getString(R.string.settings_dashboard_panel_scale)) })
+    }
+
+    @Test @Config(qualifiers = "zh-rCN-w320dp-h640dp-xhdpi")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun climatePowerCompactLargeFont() = captureClimatePower("compact-zh")
+    @Test @Config(qualifiers = "en-w1000dp-h700dp")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun climatePowerFullLargeFont() = captureClimatePower("full-en")
+    @Test @Config(qualifiers = "ar-ldrtl-w320dp-h640dp-xhdpi")
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    fun climatePowerArabicLargeFont() = captureClimatePower("compact-ar")
+
+    private fun captureClimatePower(name:String) {
+        RuntimeEnvironment.setFontScale(1.5f)
+        BoyueLSettings.select(context, true)
+        val screen=openSettings()
+        val panel=LinearLayout(screen).apply {
+            orientation=LinearLayout.VERTICAL
+            setBackgroundColor(android.graphics.Color.rgb(21,31,45))
+            val padding=(16*resources.displayMetrics.density).toInt();setPadding(padding,padding,padding,padding)
+        }
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"climatePowerSettings",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java,panel))
+        ReflectionHelpers.callInstanceMethod<Unit>(screen,"normalizeSpacing",
+            ReflectionHelpers.ClassParameter.from(LinearLayout::class.java,panel),
+            ReflectionHelpers.ClassParameter.from(Boolean::class.javaPrimitiveType!!,true))
+        panel.layoutDirection=screen.resources.configuration.layoutDirection
+        val width=(screen.resources.configuration.screenWidthDp*screen.resources.displayMetrics.density).toInt()
+        panel.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED))
+        panel.layout(0,0,width,panel.measuredHeight)
+        for(view in descendants(panel).filterIsInstance<TextView>()) {
+            val layout=view.layout ?: continue
+            for(line in 0 until layout.lineCount) assertEquals("Truncated: ${view.text}",0,layout.getEllipsisCount(line))
+        }
+        val image=Bitmap.createBitmap(width,panel.height,Bitmap.Config.ARGB_8888)
+        panel.draw(Canvas(image))
+        val path=Paths.get("build/reports/climate-power/$name.png");Files.createDirectories(path.parent)
+        Files.newOutputStream(path).use { image.compress(Bitmap.CompressFormat.PNG,100,it) };image.recycle()
+        val switches = descendants(panel).filterIsInstance<Switch>().toList()
+        assertEquals(1, switches.size)
+        assertFalse(switches.single().isChecked)
+        switches.single().isChecked = true
+        assertTrue(BoyueLSettings.climatePower(screen))
     }
 
     private fun captureMicrophoneSettings(name: String) {

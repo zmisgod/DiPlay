@@ -1,0 +1,28 @@
+<resources>
+    <string name="fx11_caf_version">DiPlay version</string>
+    <string name="fx11_caf_model">Vehicle</string>
+    <string name="fx11_caf_range">Remaining range</string>
+    <string name="fx11_caf_fuel">Fuel level</string>
+    <string name="fx11_caf_coolant">Coolant gauge</string>
+    <string name="fx11_caf_ambient">Outside temperature</string>
+    <string name="fx11_caf_gear">Gear</string>
+    <string name="fx11_caf_tires_front">Front tires · L / R</string>
+    <string name="fx11_caf_tires_rear">Rear tires · L / R</string>
+    <string name="fx11_caf_low_beam">Low beam</string>
+    <string name="fx11_caf_auto_hold">AutoHold holding</string>
+    <string name="fx11_caf_parking_brake">Parking brake</string>
+    <string name="fx11_caf_power">Climate power</string>
+    <string name="fx11_caf_driver_temp">Driver target temperature</string>
+    <string name="fx11_caf_passenger_temp">Passenger target temperature</string>
+    <string name="fx11_caf_fan">Fan level</string>
+    <string name="fx11_caf_ac">A/C</string>
+    <string name="fx11_caf_auto">Automatic climate</string>
+    <string name="fx11_caf_recirculation">Recirculation</string>
+    <string name="fx11_caf_operations">Controls</string>
+    <string name="fx11_caf_fx11">Geely FX11</string>
+    <string name="fx11_caf_climate">Climate</string>
+    <string name="fx11_caf_unknown">Unavailable</string>
+    <string name="fx11_caf_on">On</string>
+    <string name="fx11_caf_off">Off</string>
+    <string name="fx11_caf_operations_value">Open Climate for power, A/C, temperature, fan, AUTO and recirculation</string>
+</resources>

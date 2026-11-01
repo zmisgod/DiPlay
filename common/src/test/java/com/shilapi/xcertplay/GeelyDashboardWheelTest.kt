@@ -65,6 +65,7 @@ class GeelyDashboardWheelTest {
     @Before fun prepare() {
         GeelyWheelKeys.stop()
         GeelyWheelKeys.stopDashboard()
+        GeelyWheelKeys.stopEsp32()
         menu = Menu()
         GeelyWheelKeys.menuMonitorFactory = { menu }
         BoyueLSettings.select(app, true)
@@ -79,7 +80,31 @@ class GeelyDashboardWheelTest {
         cancel?.invoke()
         GeelyWheelKeys.stop()
         GeelyWheelKeys.stopDashboard()
+        GeelyWheelKeys.stopEsp32()
         GeelyWheelKeys.menuMonitorFactory = originalMenuFactory
+    }
+
+    @Test fun esp32OwnsItsMappedGestureWithoutChangingDashboardAndSurvivesOtherOwnersStopping() {
+        val mode = NativeDashboardSettings.modeKey(app)
+        app.getSharedPreferences("esp32_display",0).edit().putBoolean("enabled",true).apply()
+        BoyueLSettings.setAction(app,mode,BoyueWheelAction.CYCLE_ESP32,true)
+        GeelyWheelKeys.startEsp32(app)
+        GeelyWheelKeys.startDashboard(app)
+        GeelyWheelKeys.stopDashboard()
+        GeelyWheelKeys.start(app)
+        GeelyWheelKeys.stop()
+        val input=connect()
+        assertTrue(mode in input.registrations.last().second)
+        val before=Esp32Settings.commandId(app)
+        input.listener.onLongPressTriggered(mode,0);idle()
+        assertEquals(before+1,Esp32Settings.commandId(app))
+        assertEquals(-1,Esp32Settings.command(app))
+        assertEquals(DashboardMode.MUSIC,NativeDashboardSettings.mode(app))
+        input.listener.onShortClick(mode,0);idle()
+        assertEquals(before+1,Esp32Settings.commandId(app))
+        GeelyWheelKeys.stopEsp32()
+        assertTrue(input.released.isNotEmpty())
+        assertEquals(0,input.interceptions)
     }
 
     @Test fun removedMenuAndVoiceBindingsCannotDispatchHiddenDashboardActions() {
@@ -507,6 +532,7 @@ class GeelyDashboardWheelTest {
             idle()
             assertEquals(DashboardMode.MUSIC, NativeDashboardSettings.mode(app))
             GeelyWheelKeys.stopDashboard()
+        GeelyWheelKeys.stopEsp32()
             assertTrue(menu.closed)
             input.listener.onShortClick(200087, 0)
             idle()
@@ -604,6 +630,7 @@ class GeelyDashboardWheelTest {
         connection.onServiceDisconnected(ComponentName("com.geely.inputservice", "InputService"))
         assertFalse("The cached tab alone is insufficient", GeelyWheelKeys.isMenuPagingActive(app))
         GeelyWheelKeys.stopDashboard()
+        GeelyWheelKeys.stopEsp32()
         assertFalse(GeelyWheelKeys.isMenuPagingActive(app))
     }
 

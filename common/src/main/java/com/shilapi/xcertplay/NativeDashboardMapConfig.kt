@@ -13,16 +13,18 @@ internal object NativeDashboardMapConfig {
     val horizontalPositions = (35..65 step 5).toList()
 
     fun config(style: DashboardStyle, size: DashboardMapSize, horizontalPercent: Int = 50): AirPlayDisplayConfig {
+        if (style == DashboardStyle.CARPLAY_ULTRA) return AirPlayDisplayConfig(1920, 532,
+            widthPhysicalMm = 320, heightPhysicalMm = 89, fps = 30, primaryInputDevice = 0, features = 0)
         val (width, height) = when (style) {
             DashboardStyle.OEM_OVERLAY -> 960 to 400
             DashboardStyle.MIDNIGHT -> DashboardLayout.MIDNIGHT_MAP_WIDTH to DashboardLayout.MIDNIGHT_MAP_HEIGHT
             DashboardStyle.REPLICA, DashboardStyle.POLAR, DashboardStyle.STARFIELD -> DashboardLayout.REPLICA_MAP_WIDTH to DashboardLayout.REPLICA_MAP_HEIGHT
             DashboardStyle.OBSIDIAN -> 1920 to 532
-            DashboardStyle.TRACK -> 1380 to 532
+            DashboardStyle.TRACK -> 1540 to 532
             else -> DashboardLayout.PANORAMA_MAP_WIDTH to DashboardLayout.PANORAMA_MAP_HEIGHT
         }
         val unobscured = when (style) {
-            DashboardStyle.PANORAMA -> AirPlayInsets(top = 136, bottom = 24, left = 24, right = 400)
+            DashboardStyle.MIDNIGHT, DashboardStyle.PANORAMA -> AirPlayInsets(top = 152, bottom = 16, left = 24, right = 24)
             DashboardStyle.REPLICA, DashboardStyle.POLAR, DashboardStyle.STARFIELD -> AirPlayInsets(top = DashboardLayout.REPLICA_SAFE_TOP,
                 bottom = DashboardLayout.REPLICA_SAFE_BOTTOM, left = DashboardLayout.REPLICA_SAFE_SIDE,
                 right = DashboardLayout.REPLICA_SAFE_SIDE)

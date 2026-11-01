@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">CarPlay 空調入口（實驗性）</string>
+    <string name="settings_climate_power_description">允許 CarPlay 控制 FX11 已支援的空調功能並同步真實狀態：總開關、A/C、溫度、風量、內循環和 AUTO。重新連接 CarPlay 後生效，保留現有儀表樣式。 此開關控制 CarPlay 入口，不代表車輛空調目前開關狀態；修改後需重新連接。</string>
+</resources>

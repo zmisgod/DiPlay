@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">CarPlay Ultra 純正メーター（実験的機能）</string>
+    <string name="settings_dashboard_ultra_hint">iPhone のメーター映像を表示します。変更後は CarPlay を再接続してください。対応 iOS とテーマが必要です。実車検証は未完了です。</string>
+    <string name="settings_dashboard_ultra_waiting">CarPlay Ultra のメーター映像を待っています。CarPlay を再接続してください。</string>
+</resources>

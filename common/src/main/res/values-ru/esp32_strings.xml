@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">Экран ESP32 (экспериментально)</string>
+    <string name="esp32_enable">Передавать на ESP32</string>
+    <string name="esp32_hint">После настройки и разрешения USB подключается автоматически. Карта USB: до 4 кадр/с; другие страницы и Wi-Fi: примерно раз в секунду. Введите ключ сопряжения.</string>
+    <string name="esp32_host">IP / имя устройства</string>
+    <string name="esp32_token">Код сопряжения</string>
+    <string name="esp32_invalid">Неверный адрес или код</string>
+    <string name="esp32_navigation">Навигация</string>
+    <string name="esp32_music">Музыка</string>
+    <string name="esp32_status">Состояние подключения</string>
+    <string name="esp32_connected">Подключено</string>
+    <string name="esp32_disconnected">Нет связи: проверьте адрес и код</string>
+    <string name="esp32_no_navigation">Нет навигации</string>
+    <string name="esp32_no_music">Нет музыки</string>
+    <string name="esp32_wheel">Переключить страницу ESP32</string>
+    <string name="esp32_carplay">Карта приборной панели</string>
+    <string name="esp32_no_carplay">Ожидание карты приборной панели</string>
+    <string name="esp32_orientation">Ориентация HUD всех страниц</string>
+    <string name="esp32_normal">Обычная</string>
+    <string name="esp32_mirror_vertical">Отражение по вертикали (HUD)</string>
+    <string name="esp32_mirror_horizontal">Отражение по горизонтали</string>
+    <string name="esp32_rotate">Поворот на 180°</string>
+    <string name="esp32_orientation_hint">HUD применяется к навигации, музыке и картам. Центр карты приборной панели заполняет экран; обнаруженные чёрные поля обрезаются.</string>
+    <string name="esp32_upgrade">Обновите прошивку ESP32 до v0.2.0 или новее</string>
+    <string name="esp32_transport">Способ подключения</string>
+    <string name="esp32_usb_permission">Подключить / разрешить USB</string>
+    <string name="esp32_usb_missing">Подключите ESP32 кабелем данных и разрешите USB в настройках</string>
+    <string name="esp32_instruction_left">Впереди налево</string>
+    <string name="esp32_instruction_right">Впереди направо</string>
+    <string name="esp32_instruction_straight">Продолжайте прямо</string>
+</resources>

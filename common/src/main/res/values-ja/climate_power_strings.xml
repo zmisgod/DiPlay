@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">CarPlay 空調の入口（実験的機能）</string>
+    <string name="settings_climate_power_description">FX11 が対応する電源、A/C、温度、風量、内気循環、AUTO の操作と実状態の同期を許可します。CarPlay の再接続後に適用され、既存のメーターは保持されます。 この設定は CarPlay の入口を制御し、車両の空調のオン・オフ状態を示すものではありません。変更後は再接続が必要です。</string>
+</resources>

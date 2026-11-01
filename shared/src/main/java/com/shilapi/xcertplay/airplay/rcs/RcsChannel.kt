@@ -17,10 +17,19 @@ import kotlin.math.min
 data class RcsMessage(
     val messageType: Int,
     val body: ByteArray,
+    val packageKind: Int = 0,
+    val replyToken: Long = 0,
 ) {
-    fun encoded(): ByteArray = ApTransportPackageCodec.create(messageType, body).encoded()
+    fun encoded(): ByteArray {
+        val header = java.nio.ByteBuffer.allocate(32).putInt(4, packageKind).putLong(20, replyToken).array()
+        return ApTransportPackageCodec.create(messageType, body, header).encoded()
+    }
 
     companion object {
+        /** LIVI type-130 duplex output: asyn/cmnd, not the raw iAP comm carrier. */
+        fun command(body: ByteArray) = RcsMessage(ApTransportPackageCodec.MESSAGE_TYPE_COMMAND,
+            body, ApTransportPackageCodec.PACKAGE_ASYNC)
+
         fun comm(body: ByteArray): RcsMessage =
             RcsMessage(ApTransportPackageCodec.MESSAGE_TYPE_COMM, body)
     }
@@ -155,12 +164,15 @@ class RcsChannel private constructor(
     }
 
     private fun takePending(): RcsMessage? {
-        val packageValue = pendingPackages.pollFirst() ?: return null
-        trace(
-            "RCS RX type=0x${packageValue.messageType.toString(16)}" +
-                " bytes=${packageValue.body.size} bodyHex=${packageValue.body.toHex()}",
-        )
-        return RcsMessage(packageValue.messageType, packageValue.body)
+        while (true) {
+            val packet = pendingPackages.pollFirst() ?: return null
+            if (packet.kind == ApTransportPackageCodec.PACKAGE_REPLY) continue
+            if (packet.kind == ApTransportPackageCodec.PACKAGE_SYNC) {
+                send(RcsMessage(0, ByteArray(0), ApTransportPackageCodec.PACKAGE_REPLY, packet.replyToken))
+            }
+            trace("RCS RX type=0x${packet.messageType.toString(16)} bytes=${packet.body.size}")
+            return RcsMessage(packet.messageType, packet.body, packet.kind, packet.replyToken)
+        }
     }
 
     private fun trace(message: String) {

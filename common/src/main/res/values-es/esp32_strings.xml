@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">Pantalla ESP32 (experimental)</string>
+    <string name="esp32_enable">Enviar a ESP32</string>
+    <string name="esp32_hint">USB se reconecta automáticamente tras configurarlo y autorizarlo. Mapas USB: hasta 4 fps; otras páginas y Wi-Fi: una vez por segundo. Introduce la clave.</string>
+    <string name="esp32_host">IP / nombre del dispositivo</string>
+    <string name="esp32_token">Clave de enlace</string>
+    <string name="esp32_invalid">Dirección o clave no válida</string>
+    <string name="esp32_navigation">Navegación</string>
+    <string name="esp32_music">Música</string>
+    <string name="esp32_status">Estado de conexión</string>
+    <string name="esp32_connected">Conectado</string>
+    <string name="esp32_disconnected">Desconectado; revisa la dirección y la clave</string>
+    <string name="esp32_no_navigation">Sin navegación</string>
+    <string name="esp32_no_music">Sin música</string>
+    <string name="esp32_wheel">Cambiar página ESP32</string>
+    <string name="esp32_carplay">Mapa del cuadro</string>
+    <string name="esp32_no_carplay">Esperando mapa del cuadro</string>
+    <string name="esp32_orientation">Orientación HUD de todas las páginas</string>
+    <string name="esp32_normal">Normal</string>
+    <string name="esp32_mirror_vertical">Invertir verticalmente (HUD)</string>
+    <string name="esp32_mirror_horizontal">Reflejar horizontalmente</string>
+    <string name="esp32_rotate">Girar 180°</string>
+    <string name="esp32_orientation_hint">HUD se aplica a navegación, música y mapas. El centro del mapa del cuadro llena la pantalla; se recortan los bordes negros detectados.</string>
+    <string name="esp32_upgrade">Actualiza el firmware ESP32 a v0.2.0 o posterior</string>
+    <string name="esp32_transport">Método de conexión</string>
+    <string name="esp32_usb_permission">Conectar / autorizar USB</string>
+    <string name="esp32_usb_missing">Conecta ESP32 con un cable de datos y autoriza USB en ajustes</string>
+    <string name="esp32_instruction_left">Gira a la izquierda</string>
+    <string name="esp32_instruction_right">Gira a la derecha</string>
+    <string name="esp32_instruction_straight">Sigue recto</string>
+</resources>

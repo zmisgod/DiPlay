@@ -19,6 +19,7 @@ enum class VehicleSignal(val unit: String) {
     AUTO_HOLD_ACTIVE("boolean"), HILL_DESCENT_ACTIVE("boolean"),
     INDICATED_SPEED_KPH("km/h"),
     FRONT_COMPARTMENT_C("degC"),
+    COOLANT_GAUGE_PERCENT("percent"),
 }
 data class VehicleReading(val value: Any, val receivedMillis: Long, val propertyId: Int, val sourceElapsedMillis: Long? = null)
 interface UltraVehicleSource : Closeable {

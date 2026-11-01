@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">Acceso al climatizador de CarPlay (experimental)</string>
+    <string name="settings_climate_power_description">Permite controlar las funciones compatibles de FX11: encendido, A/C, temperatura, ventilador, recirculación y AUTO, con estado real. Reconecta CarPlay para aplicar; conserva los cuadros existentes. Esta opción controla el acceso en CarPlay, no el estado actual del climatizador. Los cambios se aplican al reconectar.</string>
+</resources>

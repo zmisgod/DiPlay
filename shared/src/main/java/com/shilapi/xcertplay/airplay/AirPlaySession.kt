@@ -97,9 +97,43 @@ class AirPlaySession(
     // Activity 重建后仍可判断当前会话的中控主视频是否已经出帧。
     val hasRenderedMainFrame: Boolean get() = mainFrameRendered && !closed.get()
 
+    @Volatile var originalInstrumentNegotiated = false
+        private set
     private val ultraStreams = UltraDataStreams(this, config)
     private val closed = AtomicBoolean(false)
     internal val isClosed: Boolean get() = closed.get()
+    internal val clusterDisplayUuid: String get() = AirPlayInfoPlist.clusterUuid(config)
+    private val mainDisplayUuid: String get() = AirPlayInfoPlist.mainUuid(config)
+    private val mainStartup = UltraMainScreenStartup()
+    @Volatile private var vehicleProtocolNegotiated = false
+    private val mainStartupWatchStarted = AtomicBoolean(false)
+
+    // One bounded attempt, only for negotiated vehicle sessions without a main SETUP.
+    // Never disconnect or silently change the user's climate/theme preferences.
+    private fun watchMainScreenStartup() {
+        if (!vehicleProtocolNegotiated || !mainStartupWatchStarted.compareAndSet(false, true)) return
+        spawnEvent("airplay-main-startup") {
+            try {
+                Thread.sleep(4000)
+                recoverMissingMainScreen()
+                Thread.sleep(8000)
+                if (!closed.get()) debugLog("Ultra main startup mainSetup=${mainScreenToken != null} rendered=$mainFrameRendered " +
+                    "clusterSetup=${clusterStream > 0} eventReady=${eventCipher != null}; no automatic reconnect")
+            } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+        }
+    }
+    internal fun recoverMissingMainScreen(): Boolean {
+        if (!vehicleProtocolNegotiated) return false
+        return mainStartup.requestIfMissing(!closed.get(), eventCipher != null, mainScreenToken != null) {
+            val sent = synchronized(eventWriteLock) {
+                if (closed.get() || mainScreenToken != null) false
+                else sendCommandLocked(mapOf("type" to "showUI", "params" to mapOf("uuid" to mainDisplayUuid)))
+            }
+            debugLog("Ultra main recovery showUI sent=$sent mainSetup=${mainScreenToken != null} rendered=$mainFrameRendered")
+            sent
+        }
+    }
+
     private val notified = AtomicBoolean(false)
     private var eventServer: ServerSocket? = null
     private var eventSocket: Socket? = null
@@ -154,6 +188,7 @@ class AirPlaySession(
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
+        mainStartup.cancel()
         ultraStreams.close()
         mainScreenToken = null
         clearClusterContent()
@@ -181,7 +216,7 @@ class AirPlaySession(
             val content = synchronized(clusterContentLock) { clusterContent } ?: return false
             if (!shown) {
                 val sent = sendCommand(mapOf("type" to "stopUI",
-                    "params" to mapOf("uuid" to AirPlayInfoPlist.ALT_UUID)))
+                    "params" to mapOf("uuid" to clusterDisplayUuid)))
                 return synchronized(clusterContentLock) {
                     val current = clusterContent ?: return false
                     if (closed.get() || current.stream != content.stream) {
@@ -243,7 +278,7 @@ class AirPlaySession(
 
     private fun showClusterUrl(content: ClusterContent, url: String): Boolean {
         if (closed.get() || clusterStream != content.stream) return false
-        val uuid = AirPlayInfoPlist.ALT_UUID
+        val uuid = clusterDisplayUuid
         val uiSent = sendCommand(mapOf("type" to "showUI", "params" to mapOf("uuid" to uuid, "url" to url)))
         val sent = uiSent && clusterStream == content.stream && !closed.get() &&
             sendCommand(mapOf("type" to "forceKeyFrame", "params" to mapOf("uuid" to uuid)))
@@ -291,7 +326,7 @@ class AirPlaySession(
         linkedMapOf(
             "type" to "changeMapZoomLevel",
             "params" to linkedMapOf(
-                "uuid" to AirPlayInfoPlist.ALT_UUID,
+                "uuid" to clusterDisplayUuid,
                 "zoomDirection" to if (zoomIn) ZOOM_DIRECTION_IN else ZOOM_DIRECTION_OUT,
             ),
         ),
@@ -299,7 +334,7 @@ class AirPlaySession(
 
     /** Moves CarPlay on the main screen to one of its declared view areas, without reconnecting. */
     fun showViewArea(index: Int): Boolean =
-        sendCommand(AirPlayInfoPlist.viewAreaCommand(index, config.main.viewAreas?.size ?: 1))
+        sendCommand(AirPlayInfoPlist.viewAreaCommand(index, config.main.viewAreas?.size ?: 1, mainDisplayUuid))
 
     fun sendCommand(command: Map<String, Any?>): Boolean = synchronized(eventWriteLock) {
         sendCommandLocked(command)
@@ -326,7 +361,11 @@ class AirPlaySession(
     private fun sendCommandLocked(command: Map<String, Any?>, extraHeaders: String = ""): Boolean {
         val socket = eventSocket ?: return false
         val cipher = eventCipher ?: return false
+        if (closed.get()) return false
         eventCseq++
+        if (command["type"] == "showUI" && (command["params"] as? Map<*, *>)?.get("uuid") == mainDisplayUuid) {
+            debugLog("Ultra main display command type=showUI cseq=$eventCseq")
+        }
         val body = BplistCodec.encode(command)
         val head = "POST /command RTSP/1.0\r\n" + extraHeaders +
             "Content-Type: $PLIST_CONTENT_TYPE\r\n" +
@@ -551,6 +590,7 @@ class AirPlaySession(
             }
             "RECORD" -> {
                 listener.onSessionActive(this)
+                watchMainScreenStartup()
                 return RtspMessage.Response(status = 200)
             }
             "TEARDOWN" -> return handleTeardown(request)
@@ -636,6 +676,7 @@ class AirPlaySession(
             Log.w(TAG, "airplay SETUP response callback failed", error)
         }
         reapplyClusterContent()
+        if (eventCipher != null) watchMainScreenStartup()
     }
 
     private fun debugLog(message: String, uiVisible: Boolean = true) {
@@ -694,6 +735,9 @@ class AirPlaySession(
         }
         val features = setupEnabledFeatures(config, dict["features"] as? List<*>)
         ultraStreams.negotiated(features)
+        vehicleProtocolNegotiated = "vehicleStateProtocol" in features
+        debugLog("airplay negotiated features=$features main=$mainDisplayUuid cluster=$clusterDisplayUuid")
+        originalInstrumentNegotiated = config.ultra?.theme != null && "uiSync" in features && "vehicleStateProtocol" in features
         if (config.ultra != null) {
             val requested = (dict["features"] as? List<*>).orEmpty()
             debugLog("Ultra negotiation vehicleStateRequested=${"vehicleStateProtocol" in requested} " +
@@ -777,6 +821,13 @@ class AirPlaySession(
         val type = string(body["type"])
         val params = asMap(body["params"]) ?: emptyMap()
         debugLog("airplay command type=$type keys=${params.keys.sorted()}")
+        if (type == "modesChanged") {
+            val resources = (params["resources"] as? List<*>).orEmpty().mapNotNull { entry ->
+                val resource = entry as? Map<*, *> ?: return@mapNotNull null
+                resource.filterKeys { it in listOf("resourceID", "entity", "owner", "transferType") }
+            }
+            debugLog("Ultra display resource modes=$resources mainSetup=${mainScreenToken != null}")
+        }
         val streamId = request.headers["x-apple-streamid"]?.toLongOrNull()
         val data = params["data"] as? ByteArray
         if (streamId != null && data != null) {
@@ -789,8 +840,10 @@ class AirPlaySession(
             "unduckAudio" -> media.onAudioDuck(this, false)
         }
         if (type == "requestUI" && string(params["url"]) == VideoInCar.UI_URL) {
+            mainStartup.cancel()
             listener.onVideoPlaybackUiRequested(this)
         } else if (type == "requestUI") {
+            mainStartup.cancel()
             listener.onHostUiRequested(this)
         }
         listener.onCommand(this, type, params)
@@ -919,6 +972,7 @@ class AirPlaySession(
             val videoDelivery = videoPlaybackAvailability.setEventReady(true)
             debugLog("airplay video event ready availability=$videoDelivery")
             reapplyClusterContent()
+            watchMainScreenStartup()
             runEventRead(socket)
         } catch (error: Exception) {
             if (!closed.get()) {
@@ -951,7 +1005,12 @@ class AirPlaySession(
                 val parsed = RtspMessage.parseMessages(plaintext)
                 plaintext = parsed.rest
                 for (message in parsed.messages) {
-                    if (message.method.startsWith("RTSP/") || message.method.startsWith("HTTP/")) continue
+                    if (message.method.startsWith("RTSP/") || message.method.startsWith("HTTP/")) {
+                        if (vehicleProtocolNegotiated && !mainFrameRendered) {
+                            debugLog("Ultra event response cseq=${message.headers["cseq"] ?: "-"} status=${message.path.toIntOrNull()} bodyBytes=${message.body.size}")
+                        }
+                        continue
+                    }
                     debugLog(
                         "airplay event rx ${message.method} ${message.path} cseq=${message.headers["cseq"] ?: "-"} body=${message.body.size}",
                     )

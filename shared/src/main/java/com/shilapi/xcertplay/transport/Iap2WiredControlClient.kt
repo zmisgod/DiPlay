@@ -179,6 +179,8 @@ class Iap2WiredControlClient(
                 deviceIdentifier = endpoint.deviceIdentifier,
                 publicKey = endpoint.publicKey,
                 sourceVersion = endpoint.sourceVersion,
+                sdkVersion = endpoint.theme?.sdkVersion,
+                clusterAsset = endpoint.theme?.asset(),
             )
 
         fun carPlayAvailabilitySummary(payload: ByteArray): String {
@@ -208,6 +210,7 @@ class Iap2WiredCarPlayEndpoint(
     val publicKey: String,
     val sourceVersion: String,
     val deviceIdentifier: String? = null,
+    val theme: com.shilapi.xcertplay.ultra.UltraThemeProfile? = null,
 ) {
     /** A stable copy so a caller cannot mutate a validated endpoint before it is encoded. */
     val ipv6Addresses: List<String> = ipv6Addresses.toList()

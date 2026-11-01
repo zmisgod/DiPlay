@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">ESP32 display (experimental)</string>
+    <string name="esp32_enable">Send to ESP32</string>
+    <string name="esp32_hint">USB reconnects automatically after setup and permission. USB maps target up to 4 fps; other pages and Wi-Fi update about once a second. Enter the pairing key.</string>
+    <string name="esp32_host">Device IP / hostname</string>
+    <string name="esp32_token">Pairing key</string>
+    <string name="esp32_invalid">Invalid address or pairing key</string>
+    <string name="esp32_navigation">Navigation</string>
+    <string name="esp32_music">Music</string>
+    <string name="esp32_status">Connection status</string>
+    <string name="esp32_connected">Connected</string>
+    <string name="esp32_disconnected">Disconnected / check address and pairing key</string>
+    <string name="esp32_no_navigation">No navigation</string>
+    <string name="esp32_no_music">No music</string>
+    <string name="esp32_wheel">Switch ESP32 page</string>
+    <string name="esp32_carplay">Cluster map</string>
+    <string name="esp32_no_carplay">Waiting for cluster map</string>
+    <string name="esp32_orientation">All-page HUD orientation</string>
+    <string name="esp32_normal">Normal</string>
+    <string name="esp32_mirror_vertical">Flip vertically (HUD)</string>
+    <string name="esp32_mirror_horizontal">Mirror horizontally</string>
+    <string name="esp32_rotate">Rotate 180°</string>
+    <string name="esp32_orientation_hint">HUD applies to navigation, music and maps. Maps fill the screen with the cluster stream’s center; black edge padding is cropped when detected.</string>
+    <string name="esp32_upgrade">Update ESP32 firmware to v0.2.0 or later</string>
+    <string name="esp32_transport">Connection method</string>
+    <string name="esp32_usb_permission">Connect / authorize USB</string>
+    <string name="esp32_usb_missing">Connect ESP32 with a data cable and authorize USB in settings</string>
+    <string name="esp32_instruction_left">Turn left ahead</string>
+    <string name="esp32_instruction_right">Turn right ahead</string>
+    <string name="esp32_instruction_straight">Continue straight</string>
+</resources>

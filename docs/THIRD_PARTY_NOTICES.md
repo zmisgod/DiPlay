@@ -53,3 +53,26 @@ The static site layout, CSS and generator adapt DiAuto (AGPL-3.0). The AGPL lice
 Required Notice: Copyright AndyShaman (https://github.com/AndyShaman/BYDMate)
 
 The maneuver PNGs under `shared/src/main/assets/byd-hud-icons` were imported from BYDMate. Its PolyForm Noncommercial 1.0.0 terms and required notice are included alongside the assets. These files are separate from the project code license; upstream describes them as donor assets and their original provenance is not independently established. The validated DiLink5.1 windshield path uses factory turn codes rather than these images.
+
+## CarPlay climate protocol
+
+The FX11 climate integration adapts the UI Sync state machine, CAF climate schema and
+APTransport duplex framing described by [LIVI commit 3f86ad7](https://github.com/f-io/LIVI/tree/3f86ad72049aa52d2969f083812ea37c80b65ea6/native/crates/livi-cp/src),
+GPL-3.0-or-later. Sources: `ui_sync.rs`, `vehicle_state.rs`,
+`vehicle_state/climate.rs`, `info.rs` (physical display panels, also cross-checked against e7b20b8), and `iap_tunnel.rs`. Independent synthetic byte fixtures
+were generated with that revision's OPACK/bplist codecs and UI Sync implementation;
+see `shared/src/test/resources/livi-ultra/README.md`. The Kotlin adapter uses ECARX feedback instead of simulated values.
+
+The v68 connection work additionally references [LIVI e7b20b8](https://github.com/f-io/LIVI/tree/e7b20b818f052958afc95dcf91acc25c70643c02/native):
+`livi-runtime/src/{ident,bringup}.rs`, `livi-cp/src/stack/data_streams.rs`,
+`livi-cp/src/{info,ui_sync}.rs`, `vehicle_state/{climate,resources}.rs`, and
+`livi-core/src/theme_catalog.rs`. It adds lane replacement, instrument plugin panels,
+and opt-in layout requests. Theme identifier/version/SDK and panel/layout metadata
+were checked against the Apple CarDDPAssets catalog and package on 2026-10-31.
+No Apple CoreAnimation bundles or artwork are included in the source or APK.
+Actual iPhone acceptance/rendering remains a device compatibility test.
+
+The v71 vehicle page also adapts `vehicle_state/settings.rs` from LIVI e7b20b8
+(Copyright 2025–2026 Lasse Heitgres, GPL-3.0-or-later, additional terms in LIVI NOTICE).
+It uses info-line and section types with FX11 feedback and localized labels; it does not
+copy LIVI simulator controls or DAB radio capabilities into the FX11 profile.

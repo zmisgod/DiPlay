@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">مدخل مناخ CarPlay (تجريبي)</string>
+    <string name="settings_climate_power_description">يسمح بوظائف FX11 المدعومة: التشغيل وA/C والحرارة والمروحة وتدوير الهواء وAUTO مع الحالة الفعلية. أعد توصيل CarPlay للتطبيق. تبقى أنماط العدادات الحالية. يتحكم هذا الخيار في مدخل CarPlay وليس في حالة تشغيل مناخ السيارة الحالية. تسري التغييرات بعد إعادة الاتصال.</string>
+</resources>

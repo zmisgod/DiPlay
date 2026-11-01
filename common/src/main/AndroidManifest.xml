@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Optional, user-authorized startup of the car's own hotspot. -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
@@ -40,6 +41,14 @@
         </intent>
     </queries>
     <application>
+        <activity android:name="com.shilapi.xcertplay.Esp32UsbAttachActivity" android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay" android:excludeFromRecents="true">
+            <intent-filter><action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" /></intent-filter>
+            <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/esp32_usb_device_filter" />
+        </activity>
+        <service android:name="com.shilapi.xcertplay.Esp32DisplayService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User enabled USB or local Wi-Fi companion display for vehicle navigation and music" />
+        </service>
         <service android:name="com.shilapi.xcertplay.NativeDashboardService"
             android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

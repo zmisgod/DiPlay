@@ -92,9 +92,12 @@ class NativeDashboardUiTest {
             view.snapshot = view.snapshot.copy(music = view.snapshot.music.copy(info = view.snapshot.music.info.copy(elapsedMillis = 3000)))
             val moving = frame()
             var changes = 0
-            for (x in 520..1890) for (y in 180..444) if (first.getPixel(x,y) != moving.getPixel(x,y)) changes++
+            val musicBox=view.geometry.music!!
+            for (x in musicBox.left.toInt() until musicBox.right.toInt())
+                for (y in musicBox.top.toInt() until musicBox.bottom.toInt())
+                    if (first.getPixel(x,y) != moving.getPixel(x,y)) changes++
             assertTrue("Long labels must move: $style", changes > 20)
-            for (x in 20..420) for (y in 70..410) assertEquals(first.getPixel(x,y), moving.getPixel(x,y))
+            for (x in 20..420) for (y in 70..350) assertEquals(first.getPixel(x,y), moving.getPixel(x,y))
             for ((name, bitmap) in listOf("start" to first, "scroll" to moving)) {
                 File(out, "marquee-${style.name.lowercase()}-$name.png").outputStream().use {
                     assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
@@ -335,7 +338,10 @@ class NativeDashboardUiTest {
         val second=render(base.copy(vehicle=base.vehicle+mapOf(VehicleSignal.ODOMETER_KM to VehicleReading(99999.0,0,0),
             VehicleSignal.DRIVER_BELT_FASTENED to VehicleReading(false,0,0))))
         for(x in 0 until 1920) for(y in 472 until 532) assertEquals(first.getPixel(x,y),second.getPixel(x,y))
-        for(x in listOf(1708,1768,1828)) assertEquals(Color.rgb(6,14,23),first.getPixel(x,502))
+        val noGap=render(base.copy(vehicle=base.vehicle-VehicleSignal.FOLLOW_GAP))
+        // Full-height dial wells now occupy this area; cruise gap must not add bottom indicators.
+        for(x in 0 until 1920 step 3) for(y in 472 until 532 step 3) assertEquals(noGap.getPixel(x,y),first.getPixel(x,y))
+        noGap.recycle()
         val out=File("build/reports/native-dashboard").apply { mkdirs() }
         File(out,"midnight-ordinary-cruise-fixture.png").outputStream().use { assertTrue(first.compress(Bitmap.CompressFormat.PNG,100,it)) }
         first.recycle(); second.recycle()
@@ -343,12 +349,12 @@ class NativeDashboardUiTest {
     @Test fun navigationUsesTheWideTextureWindowAndKeepsGuidanceVisibleAboveIt() {
         val app=RuntimeEnvironment.getApplication()
         val bounds=DashboardLayout.of(DashboardStyle.MIDNIGHT,DashboardMode.NAVIGATION).map!!
-        MapMirrors.streamAspect=1408.0/400
+        MapMirrors.streamAspect=1464.0/456
         val host=NativeDashboardView(app).apply { artworkView.mode=DashboardMode.NAVIGATION }
         host.measure(View.MeasureSpec.makeMeasureSpec(1920,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(532,View.MeasureSpec.EXACTLY))
         host.layout(0,0,1920,532)
-        assertEquals(1408,host.getChildAt(0).width); assertEquals(400,host.getChildAt(0).height)
-        assertEquals(488,host.getChildAt(0).left); assertEquals(60,host.getChildAt(0).top)
+        assertEquals(1464,host.getChildAt(0).width); assertEquals(456,host.getChildAt(0).height)
+        assertEquals(432,host.getChildAt(0).left); assertEquals(60,host.getChildAt(0).top)
         val bitmap=Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888)
         val canvas=Canvas(bitmap)
         val underlay=Color.rgb(18,43,61)
@@ -367,7 +373,7 @@ class NativeDashboardUiTest {
         view.layout(0,0,1920,532); view.draw(canvas)
         assertEquals(underlay,bitmap.getPixel(1800,400)) // Right-hand map survives, no RPM dial.
         assertNotEquals(underlay,bitmap.getPixel(600,100)) // Guidance overlays the stream.
-        assertEquals(Color.rgb(6,14,23),bitmap.getPixel(450,400)) // Clear gap after left speed dial.
+        assertEquals(Color.rgb(6,14,23),bitmap.getPixel(422,400)) // Clear gap between side card and video.
         val out=File("build/reports/native-dashboard").apply { mkdirs() }
         File(out,"midnight-navigation-map-fixture.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
         bitmap.recycle()
@@ -407,7 +413,7 @@ class NativeDashboardUiTest {
             CarPlayNowPlaying(title="晴天",artist="歌手",durationMillis=100000,elapsedMillis=25000))),style=DashboardStyle.PANORAMA)
         val second=render(DashboardSnapshot(music=ClusterMusicState.Snapshot(
             CarPlayNowPlaying(title="晴天",artist="歌手",durationMillis=200000,elapsedMillis=50000))),style=DashboardStyle.PANORAMA)
-        for(x in 1536 until 1896) for(y in 310 until 452) assertEquals(first.getPixel(x,y),second.getPixel(x,y))
+        for(x in 1536 until 1896) for(y in 370 until 512) assertEquals(first.getPixel(x,y),second.getPixel(x,y))
         first.recycle(); second.recycle()
     }
     @Test fun panoramaWideVideoSurvivesCardSwitchAndKeepsNavigationAndVehicleOverlay() {
@@ -425,7 +431,7 @@ class NativeDashboardUiTest {
             host.measure(View.MeasureSpec.makeMeasureSpec(1920,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(532,View.MeasureSpec.EXACTLY))
             host.layout(0,0,1920,532)
             assertEquals(1488,host.getChildAt(0).width); assertEquals(472,host.getChildAt(0).height)
-            assertEquals(432,host.getChildAt(0).left); assertEquals(0,host.getChildAt(0).top)
+            assertEquals(432,host.getChildAt(0).left); assertEquals(60,host.getChildAt(0).top)
             val bitmap=Bitmap.createBitmap(1920,532,Bitmap.Config.ARGB_8888)
             val canvas=Canvas(bitmap); val underlay=Color.rgb(18,43,61); canvas.drawColor(underlay)
             val view=DashboardCanvas(app).apply {
@@ -437,8 +443,9 @@ class NativeDashboardUiTest {
             assertEquals(underlay,bitmap.getPixel(1200,400))
             assertEquals(underlay,bitmap.getPixel(1800,250)) // Area reclaimed by the smaller card.
             assertNotEquals(underlay,bitmap.getPixel(700,80)) // Guidance above video.
-            assertNotEquals(underlay,bitmap.getPixel(1700,350)) // Music/tire card above video.
-            assertNotEquals(underlay,bitmap.getPixel(60,500)) // Vehicle footer remains opaque.
+            assertNotEquals(underlay,bitmap.getPixel(210,410)) // Card below speed, outside video.
+            assertEquals(underlay,bitmap.getPixel(1700,410)) // Former right-side card is now live map.
+            assertNotEquals(underlay,bitmap.getPixel(80,30)) // Vehicle information is now above the video.
             val out=File("build/reports/native-dashboard").apply { mkdirs() }
             File(out,"panorama-${mode.name.lowercase()}-map-fixture.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,it)) }
             bitmap.recycle()
@@ -470,18 +477,22 @@ class NativeDashboardUiTest {
             VehicleSignal.HIGH_BEAM,VehicleSignal.POSITION_LIGHT,VehicleSignal.REAR_FOG,VehicleSignal.RIGHT_TURN)
         val on=render(DashboardSnapshot(signals.associateWith { VehicleReading(true,0,0) }),style=DashboardStyle.PANORAMA)
         val off=render(DashboardSnapshot(signals.associateWith { VehicleReading(false,0,0) }),style=DashboardStyle.PANORAMA)
+        // Panorama uses the shared top strip; AUTO is merged into the low-beam glyph.
+        val centers=listOf(546,600,600,667,733,794,1374)
         signals.indices.forEach { index ->
-            val cx=(40f+(343f/6f)*index).toInt()
-            assertTrue((cx-20..cx+20).any { x -> (42..82).any { y -> on.getPixel(x,y)!=off.getPixel(x,y) } })
+            val cx=centers[index]
+            assertTrue(signals[index].name,(cx-22..cx+22).any { x -> (8..52).any { y -> on.getPixel(x,y)!=off.getPixel(x,y) } })
         }
+        for(x in 10..420 step 2) for(y in 10..100 step 2)
+            assertEquals("No duplicate lamps above the speed readout",on.getPixel(x,y),off.getPixel(x,y))
         on.recycle(); off.recycle()
         val known=DashboardSnapshot(mapOf(VehicleSignal.TIRE_FL_BAR to VehicleReading(2.4,0,0),
             VehicleSignal.TIRE_FR_BAR to VehicleReading(2.42,0,0),VehicleSignal.TIRE_RL_BAR to VehicleReading(2.38,0,0),
             VehicleSignal.TIRE_RR_BAR to VehicleReading(2.39,0,0)))
         val all=render(known,DashboardMode.TIRES,DashboardStyle.PANORAMA)
         val missing=render(known.copy(vehicle=known.vehicle-VehicleSignal.TIRE_RR_BAR),DashboardMode.TIRES,DashboardStyle.PANORAMA)
-        assertTrue((1808..1879).any { x -> (400..437).any { y -> all.getPixel(x,y)!=missing.getPixel(x,y) } })
-        for(x in 1552..1688) for(y in 340..437) assertEquals(all.getPixel(x,y),missing.getPixel(x,y))
+        assertTrue((305..390).any { x -> (462..492).any { y -> all.getPixel(x,y)!=missing.getPixel(x,y) } })
+        for(x in 34..170) for(y in 400..497) assertEquals(all.getPixel(x,y),missing.getPixel(x,y))
         all.recycle(); missing.recycle()
     }
     @Test fun allThreeStylesHideGuidanceAndArrivalCardsWithoutAnActiveRoute() {
@@ -507,7 +518,7 @@ class NativeDashboardUiTest {
             assertNotEquals("$style route appears over video",underlay,active.getPixel(800,y))
             if(style==DashboardStyle.PANORAMA) {
                 assertEquals("No leftover arrival box",underlay,empty.getPixel(1700,130))
-                assertNotEquals(underlay,active.getPixel(1700,130))
+                assertEquals("Trip summary moved into guidance",underlay,active.getPixel(1700,130))
             }
             val out=File("build/reports/native-dashboard").apply { mkdirs() }
             File(out,"${style.name.lowercase()}-no-navigation-video-fixture.png").outputStream().use { assertTrue(empty.compress(Bitmap.CompressFormat.PNG,100,it)) }
@@ -696,7 +707,7 @@ class NativeDashboardUiTest {
                     assertEquals(1920,bitmap.width);assertEquals(532,bitmap.height)
                     assertNotEquals(Color.TRANSPARENT,bitmap.getPixel(100,500))
                     val pixels=if(style==DashboardStyle.REPLICA) replicaStatusForeground(bitmap) else
-                        IntArray(1920*60).also { bitmap.getPixels(it,0,1920,0,472,1920,60) }
+                        IntArray(1920*60).also { bitmap.getPixels(it,0,1920,0,0,1920,60) }
                     statusPixels[style to connected]?.let { assertArrayEquals("Status indicators must survive page switching",it,pixels) }
                     statusPixels[style to connected]=pixels
                     bitmap.recycle()

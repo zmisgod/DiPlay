@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">CarPlay Ultra original instruments (experimental)</string>
+    <string name="settings_dashboard_ultra_hint">Uses the iPhone instrument stream. Reconnect CarPlay after changing this style. Requires compatible iOS and downloaded theme resources; vehicle validation is pending.</string>
+    <string name="settings_dashboard_ultra_waiting">Waiting for CarPlay Ultra instrument video. Reconnect CarPlay to apply this style.</string>
+</resources>

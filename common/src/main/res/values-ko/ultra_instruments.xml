@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">CarPlay Ultra 기본 계기판 (실험 기능)</string>
+    <string name="settings_dashboard_ultra_hint">iPhone 계기판 영상을 사용합니다. 변경 후 CarPlay를 다시 연결하세요. 호환 iOS와 테마가 필요하며 차량 검증이 필요합니다.</string>
+    <string name="settings_dashboard_ultra_waiting">CarPlay Ultra 계기판 영상 대기 중. CarPlay를 다시 연결하세요.</string>
+</resources>

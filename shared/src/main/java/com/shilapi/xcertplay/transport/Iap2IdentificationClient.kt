@@ -63,6 +63,7 @@ data class Iap2IdentificationConfig(
     /** Generic status (for example outside temperature); never declares an electric powertrain. */
     val vehicleDataEnabled: Boolean = false,
     val vehicleStatusCapabilities: Set<Int> = emptySet(),
+    val theme: com.shilapi.xcertplay.ultra.UltraThemeProfile? = null,
 ) {
     constructor(
         name: String,
@@ -365,6 +366,7 @@ class Iap2IdentificationClient(private val session: Iap2Session) {
                         void(2)
                         u8(3, config.carPlayUsbInterfaceNumber)
                         void(4)
+                        config.theme?.let { string(6, it.assetId) }
                     }
                 } else {
                     group(17) {
@@ -382,6 +384,7 @@ class Iap2IdentificationClient(private val session: Iap2Session) {
                         u16(3, 1)
                         void(4)
                         void(5)
+                        config.theme?.let { string(6, it.assetId) }
                     }
                 }
                 if (config.vehicleStatusEnabled) electricVehicleComponents(config.manufacturer, config.chargingConnectors)

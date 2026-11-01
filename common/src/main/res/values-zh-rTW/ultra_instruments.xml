@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">CarPlay Ultra 原版儀表（實驗性）</string>
+    <string name="settings_dashboard_ultra_hint">使用 iPhone 原版儀表影片串流；切換後需重新連接 CarPlay。需要相容的 iOS 和主題資源，實車效果待驗證。</string>
+    <string name="settings_dashboard_ultra_waiting">等待 CarPlay Ultra 儀表畫面，請重新連接 CarPlay 套用此樣式。</string>
+</resources>

@@ -42,7 +42,7 @@ class NativeDashboardTest {
         val config = ReflectionHelpers.callInstanceMethod<com.shilapi.xcertplay.airplay.AirPlayDisplayConfig>(host, "clusterDisplayConfig")
         assertEquals(1488, config.widthPixels)
         assertEquals(472, config.heightPixels)
-        assertEquals(24 + 1088, config.safeArea!!.left + config.widthPixels - config.safeArea!!.right)
+        assertEquals(config.widthPixels, config.safeArea!!.left + config.widthPixels - config.safeArea!!.right) // Symmetric focus after moving the right card left.
         assertTrue(config.safeArea!!.right > 400)
         assertEquals(true, config.safeAreaDrawOutside)
         assertNotNull(config.initialUrl)
@@ -293,7 +293,7 @@ class NativeDashboardTest {
         repeat(4) {
             val next=DashboardLayout.of(DashboardStyle.PANORAMA,NativeDashboardSettings.cycle(app))
             assertEquals(before.map,next.map); assertEquals(before.navigation,next.navigation)
-            assertTrue(next.map!!.contains(next.music ?: next.tires!!))
+            assertTrue((next.music ?: next.tires!!).right < next.map!!.left)
             assertEquals(before.music,next.music ?: next.tires)
         }
         NativeDashboardSettings.setStyle(app,DashboardStyle.MIDNIGHT)
@@ -436,7 +436,7 @@ class NativeDashboardTest {
         assertEquals(80.0,DashboardSnapshot(base + (VehicleSignal.ACC_SET_SPEED_KPH to VehicleReading(80.0,0,0x11601013))).accSetSpeedKph!!,0.0)
         assertEquals(68.0,DashboardSnapshot(base).number(VehicleSignal.SPEED_KPH)!!,0.0)
     }
-    @Test fun allLayoutsKeepVehicleAreaAndMidnightNeverCombinesMusicAndNavigation() {
+    @Test fun layoutsKeepMusicOutsideTheMapAndVehicleInformationAtTheTop() {
         for (style in listOf(DashboardStyle.MIDNIGHT, DashboardStyle.PANORAMA)) {
             for (mode in DashboardMode.entries) {
                 val layout = DashboardLayout.of(style, mode)
@@ -444,11 +444,16 @@ class NativeDashboardTest {
                 val showMap = style == DashboardStyle.PANORAMA || selected == DashboardMode.NAVIGATION
                 assertEquals(showMap, layout.map != null)
                 assertEquals(showMap, layout.navigation != null)
-                assertEquals(selected == DashboardMode.MUSIC, layout.music != null)
+                assertEquals(selected == DashboardMode.MUSIC || (style == DashboardStyle.MIDNIGHT && selected == DashboardMode.NAVIGATION), layout.music != null)
                 assertEquals(selected == DashboardMode.TIRES, layout.tires != null)
-                if (style == DashboardStyle.MIDNIGHT) assertFalse(layout.music != null && layout.navigation != null)
+                if (showMap) {
+                    val card=layout.music ?: layout.tires!!
+                    assertTrue("Side card stays below speed",card.top >= 360)
+                    assertTrue("Side card never covers video",card.right < layout.map!!.left)
+                    assertTrue(layout.map!!.contains(layout.navigation!!))
+                }
                 listOfNotNull(layout.map, layout.navigation, layout.music, layout.tires).forEach {
-                    assertTrue(it.left >= 432 && it.right <= 1920 && it.top >= 0 && it.bottom <= if (style == DashboardStyle.MIDNIGHT) 460 else 472)
+                    assertTrue(it.left >= 18 && it.right <= 1920 && it.top >= 60 && it.bottom <= if (style == DashboardStyle.MIDNIGHT) 516 else 532)
                 }
             }
         }
@@ -461,10 +466,10 @@ class NativeDashboardTest {
         val host=Robolectric.buildActivity(CarPlayHostActivity::class.java).get()
         try {
             val config=ReflectionHelpers.callInstanceMethod<com.shilapi.xcertplay.airplay.AirPlayDisplayConfig>(host,"clusterDisplayConfig")
-            assertEquals(1408,config.widthPixels); assertEquals(400,config.heightPixels)
+            assertEquals(1464,config.widthPixels); assertEquals(456,config.heightPixels)
             val bounds=DashboardLayout.of(DashboardStyle.MIDNIGHT,DashboardMode.NAVIGATION).map!!
             assertEquals(bounds.width()/bounds.height(),MapMirrors.STREAM_ASPECT.toFloat(),0.001f)
-            assertTrue(bounds.left>404f+60f) // Distinct gap after the left dial.
+            assertTrue(bounds.left>360f+60f) // Distinct gap after the left dial.
             assertTrue(bounds.right>1800f) // No right-hand RPM dial in this page.
             assertNotNull(config.initialUrl)
         } finally {

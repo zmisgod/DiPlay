@@ -15,6 +15,12 @@ import com.shilapi.xcertplay.airplay.rcs.opack.OpackCodec
  */
 object CafRcsCodec {
     fun encode(envelope: CafEnvelope): CafRcsFrame {
+        val body = BplistCodec.encode(mapOf("params" to mapOf("data" to encodeOpack(envelope))))
+        return CafRcsFrame(envelope, body)
+    }
+
+    /** LIVI's vehicle channels carry this OPACK directly in the APTransport body. */
+    fun encodeOpack(envelope: CafEnvelope): ByteArray {
         envelope.message.validateWireShape()
         if (envelope.pluginId < 0) {
             throw CafProtocolException("pluginId must not be negative")
@@ -31,14 +37,7 @@ object CafRcsCodec {
             "pluginID" to envelope.pluginId,
             "pluginData" to OpackCodec.encode(inner),
         )
-        val body = BplistCodec.encode(
-            linkedMapOf(
-                "params" to linkedMapOf(
-                    "data" to OpackCodec.encode(outer),
-                ),
-            ),
-        )
-        return CafRcsFrame(envelope, body)
+        return OpackCodec.encode(outer)
     }
 
     fun decode(rcsBody: ByteArray): CafEnvelope {
@@ -46,6 +45,12 @@ object CafRcsCodec {
         val params = requireMap(wrapper["params"], "RCS body params")
         val outerBytes = params["data"] as? ByteArray
             ?: throw CafProtocolException("RCS body params.data must be NSData")
+        return decodeOpack(outerBytes)
+    }
+
+    fun decodeOpack(body: ByteArray): CafEnvelope {
+        require(body.size <= 512 * 1024) { "CAF payload too large" }
+        val outerBytes = body
         val outer = requireMap(OpackCodec.decode(outerBytes), "CAF outer OPACK")
         val pluginId = CafNumbers.toLong(outer["pluginID"], "CAF pluginID")
         val innerBytes = outer["pluginData"] as? ByteArray

@@ -4,7 +4,6 @@ import com.shilapi.xcertplay.airplay.*
 import com.shilapi.xcertplay.airplay.rcs.*
 import com.shilapi.xcertplay.airplay.rcs.caf.*
 import com.shilapi.xcertplay.airplay.rcs.catalog.*
-import com.shilapi.xcertplay.airplay.rcs.uisync.CarPlayUiSyncMessageFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -28,21 +27,7 @@ object Fx11UltraProvisioning {
             runtimeFeatures = setOf(AirPlayFeature.ALT_SCREEN, AirPlayFeature.UI_CONTEXT))
     }
 
-    private fun uiSync(diagnostic: (String) -> Unit) = object : RcsDataStreamHandler {
-        private val state = UltraUiSync()
-        private var diagnosticCount = 0
-        override fun onMessage(stream: RcsDataStream, message: RcsMessage) {
-            require(message.body.size <= 512 * 1024) { "UI Sync payload too large" }
-            val decoded = CarPlayUiSyncMessageFactory.decode(message.body)
-            state.receive(decoded)?.let { stream.send(it.toRcsMessage()) }
-            val status = "Ultra UI RX ${decoded.type.wireName} ssn=${decoded.sessionSequenceNumber} psn=${decoded.packetSequenceNumber} " +
-                "command=${state.lastCommand}; receipt only, Local UI not implemented"
-            diagnostic(status); stream.traceProtocol(status)
-            if (diagnosticCount++ < 16) stream.reportDiagnostic("event=ui-sync type=${decoded.type.wireName} " +
-                "command=${com.shilapi.xcertplay.airplay.rcs.uisync.CarPlayUiSyncCommand.entries.firstOrNull { it.wireName == state.lastCommand }?.wireName ?: "unknown"} " +
-                "localUiImplemented=false")
-        }
-    }
+    private fun uiSync(diagnostic: (String) -> Unit) = ClimatePowerProvisioning.uiSync(diagnostic)
 
     private fun vehicle(profile: UltraVehicleProfile, source: UltraVehicleSource, diagnostic: (String) -> Unit) = object : RcsDataStreamHandler {
         private val state = VehicleCafState(profile, source)

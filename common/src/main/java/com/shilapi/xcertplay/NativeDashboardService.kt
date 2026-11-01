@@ -331,7 +331,13 @@ class NativeDashboardService : Service(), DisplayManager.DisplayListener {
             panel = null; panelDrawn = false; projection.updateDashboardReady(false)
         } }
         try {
-            val view = NativeDashboardView(next.context)
+            val view: android.view.View = if (style == DashboardStyle.CARPLAY_ULTRA) UltraClusterView(next.context) { fresh ->
+                if (panel === next) {
+                    panelDrawn = fresh
+                    panelStatus = if (fresh) "Ultra instrument video received; physical gauge content needs validation" else "Waiting for iPhone Ultra instrument video"
+                    projection.updateDashboardReady(panelReady())
+                }
+            } else NativeDashboardView(next.context)
             next.setContentView(view)
             val firstDraw = object : android.view.ViewTreeObserver.OnDrawListener {
                 override fun onDraw() {
@@ -345,7 +351,7 @@ class NativeDashboardService : Service(), DisplayManager.DisplayListener {
                     }
                 }
             }
-            view.viewTreeObserver.addOnDrawListener(firstDraw)
+            if (style != DashboardStyle.CARPLAY_ULTRA) view.viewTreeObserver.addOnDrawListener(firstDraw)
             next.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             next.window?.decorView?.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
                 android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or

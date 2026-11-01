@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">Раздел климата CarPlay (экспериментально)</string>
+    <string name="settings_climate_power_description">Разрешает поддерживаемые функции FX11: питание, A/C, температуру, вентилятор, рециркуляцию и AUTO с реальными состояниями. Переподключите CarPlay. Стили приборов сохраняются. Настройка управляет разделом CarPlay, а не текущим состоянием климата автомобиля. Изменения применяются после переподключения.</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">Strumentazione originale CarPlay Ultra (sperimentale)</string>
+    <string name="settings_dashboard_ultra_hint">Usa il video della strumentazione di iPhone. Ricollega CarPlay dopo la modifica. Richiede iOS e temi compatibili; verifica sul veicolo ancora necessaria.</string>
+    <string name="settings_dashboard_ultra_waiting">In attesa della strumentazione CarPlay Ultra. Ricollega CarPlay.</string>
+</resources>

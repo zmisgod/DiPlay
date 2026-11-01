@@ -31,6 +31,7 @@ internal data class DashboardSnapshot(
     val ambientC: Double? get() = number(VehicleSignal.INDICATED_AMBIENT_C)?.takeIf { it in -60.0..85.0 }
     val accSetSpeedKph: Double? get() = number(VehicleSignal.ACC_SET_SPEED_KPH)?.takeIf { it in 0.0..350.0 }
     val coolantC: Double? get() = number(VehicleSignal.ENGINE_COOLANT_C)?.takeIf { it in -40.0..215.0 }
+    val coolantGaugePercent: Double? get() = number(VehicleSignal.COOLANT_GAUGE_PERCENT)?.takeIf { it in 0.0..100.0 }
     val frontCompartmentC: Double? get() = number(VehicleSignal.FRONT_COMPARTMENT_C)?.takeIf { it in -40.0..125.0 }
     val gear: String get() = (vehicle[VehicleSignal.GEAR]?.value as? String)?.takeIf { it in listOf("P", "R", "N", "D") } ?: "—"
     val assistance: DashboardAssistance get() = DashboardAssistance.from(this)
@@ -83,6 +84,8 @@ internal object NativeDashboardRuntime {
     private var source: UltraVehicleSource? = null
     private var exteriorLights: UltraVehicleSource? = null
     private var coolant: UltraVehicleSource? = null
+    private var gauge: UltraVehicleSource? = null
+    internal var gaugeFactory: (Context)->UltraVehicleSource = { Fx11GaugeSource(it) }
     private var autoHold: UltraVehicleSource? = null
     internal var autoHoldFactory: (Context) -> UltraVehicleSource = { Fx11AutoHoldSource(it) }
     internal var coolantFactory: (Context) -> UltraVehicleSource = { Fx11CoolantSource(it) }
@@ -98,7 +101,7 @@ internal object NativeDashboardRuntime {
         private set
     val status: String get() = ((source as? Fx11VehicleSource)?.diagnosticReport() ?: "FX11 reader idle") +
         "; " + ((exteriorLights as? Fx11ExteriorLightSource)?.diagnosticReport() ?: "OEM exterior-light reader idle") +
-        "; " + ((coolant as? Fx11CoolantSource)?.diagnosticReport() ?: "OEM coolant reader idle") +
+        "; " + ((coolant as? Fx11CoolantSource)?.diagnosticReport() ?: "OEM coolant reader idle") + "; " + ((gauge as? Fx11GaugeSource)?.diagnosticReport() ?: "Gauge reader idle") +
         "; " + ((autoHold as? Fx11AutoHoldSource)?.diagnosticReport() ?: "AutoHold reader idle") +
         "; " + ClusterMusicState.diagnostic() +
         "; readings=" + state.vehicle.entries.joinToString { (signal, reading) ->
@@ -107,7 +110,7 @@ internal object NativeDashboardRuntime {
         "; speed=OEM SIVehSpdIndcd integer km/h, no standard fallback; moving comparison pending" +
         "; ACC set=standard m/s converted to km/h; FX11 display RAW units unverified; range=OEM PA DTE only, unavailable stays unknown" +
         "; temperature=OEM Celsius only, unavailable stays unknown; tirePressure=FX11 PA data / 10 bar" +
-        "; coolant=standard Celsius preferred, active ECARX sensor 1052416 fallback (vehicle comparison pending); parkingBrake=FX11 EPBLampReq 557850632 raw 0=on/1=off, no standard fallback; physical transition unverified; AutoHold=verified QNX Telltale lamp32 1=holding/0=not holding; missing/disconnected=unknown; HDC=unmapped; classic brake icons gray unless confirmed: AutoHold green, parking brake red; HDC hidden until active" +
+        "; dashboard water gauge=verified GaugeModule event5 percent (not Celsius); separate coolant telemetry=Celsius, no UI fallback; parkingBrake=FX11 EPBLampReq 557850632 raw 0=on/1=off, no standard fallback; physical transition unverified; AutoHold=verified QNX Telltale lamp32 1=holding/0=not holding; missing/disconnected=unknown; HDC=unmapped; classic brake icons gray unless confirmed: AutoHold green, parking brake red; HDC hidden until active" +
         "; cruise=CrsCtrlrSts1 gated by inactive adaptive mode (vehicle validation pending); autoLamp=OEM exterior-light selector only; unavailable stays unknown" + "\n" + DashboardPerformanceLog.report()
     private var expectedTickAt = 0L
     private var maxTickDelay = 0L
@@ -116,7 +119,7 @@ internal object NativeDashboardRuntime {
         override fun run() {
             val now = android.os.SystemClock.uptimeMillis()
             if (expectedTickAt > 0) maxTickDelay = maxOf(maxTickDelay, (now - expectedTickAt).coerceAtLeast(0))
-            state = DashboardSnapshot(coolant?.snapshot().orEmpty() + source?.snapshot().orEmpty() + exteriorLights?.snapshot().orEmpty() + autoHold?.snapshot().orEmpty(), music, GeelyDimNavigation.snapshot())
+            state = DashboardSnapshot(gauge?.snapshot().orEmpty() + coolant?.snapshot().orEmpty() + source?.snapshot().orEmpty() + exteriorLights?.snapshot().orEmpty() + autoHold?.snapshot().orEmpty(), music, GeelyDimNavigation.snapshot())
             listeners.toList().forEach { it(state) }
             val finished = android.os.SystemClock.uptimeMillis()
             if (now - lastPerformanceAt >= 5000) {
@@ -136,6 +139,7 @@ internal object NativeDashboardRuntime {
         if (exteriorLights == null && context != null) {
             exteriorLights = exteriorLightFactory(context.applicationContext).also { it.start() }
         }
+        if(gauge==null && context!=null) gauge=gaugeFactory(context.applicationContext).also { it.start() }
         if (coolant == null && context != null) {
             coolant = coolantFactory(context.applicationContext).also { it.start() }
         }
@@ -155,6 +159,7 @@ internal object NativeDashboardRuntime {
                 source?.close(); source = null
                 exteriorLights?.close(); exteriorLights = null
                 coolant?.close(); coolant = null
+                gauge?.close(); gauge=null
                 autoHold?.close(); autoHold = null
                 music = ClusterMusicState.Snapshot(); state = DashboardSnapshot()
             }

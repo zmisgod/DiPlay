@@ -36,6 +36,9 @@ internal object GeelyWheelKeys {
     private var connection: ServiceConnection? = null
     private var bindingEpoch = 0L
     @Volatile private var listenerEpoch = 0L
+    private var esp32Owner = false
+    @Synchronized fun startEsp32(context: Context) { esp32Owner=true;appContext=context.applicationContext;refresh() }
+    @Synchronized fun stopEsp32() { esp32Owner=false;if(mediaOwner || dashboardOwner || learning!=null) refresh() else unbind() }
     private var mediaOwner = false
     private var dashboardOwner = false
     private var registeredCodes = emptyList<Int>()
@@ -105,7 +108,7 @@ internal object GeelyWheelKeys {
     @Synchronized fun stopDashboard() {
         dashboardOwner = false
         stopMenuMonitor()
-        if (mediaOwner || learning != null) refresh() else unbind()
+        if (mediaOwner || esp32Owner || learning != null) refresh() else unbind()
     }
 
     private fun wheelEnabled(context: Context) = !BoyueLSettings.selected(context) || BoyueLSettings.wheel(context)
@@ -143,7 +146,7 @@ internal object GeelyWheelKeys {
     /** Releases media ownership only; an offline native dashboard still owns both dashboard keys. */
     @Synchronized fun stop() {
         mediaOwner = false
-        if (dashboardOwner || learning != null) refresh() else unbind()
+        if (dashboardOwner || esp32Owner || learning != null) refresh() else unbind()
     }
 
     /**
@@ -168,7 +171,7 @@ internal object GeelyWheelKeys {
         session.timeout?.let(learningHandler::removeCallbacks)
         learning = null
         learningStatus = status
-        if (mediaOwner || dashboardOwner) refresh() else unbind()
+        if (mediaOwner || dashboardOwner || esp32Owner) refresh() else unbind()
     }
 
     /** Invalidate Binder callbacks and queued UI dispatch before unregistering the old binder. */
@@ -189,7 +192,7 @@ internal object GeelyWheelKeys {
         connection = null
         bound = false
         appContext = null
-        if (!mediaOwner && !dashboardOwner && learning == null) dashboardDebounce.reset()
+        if (!mediaOwner && !dashboardOwner && !esp32Owner && learning == null) dashboardDebounce.reset()
     }
 
     private fun bindLocked() {
@@ -249,7 +252,7 @@ internal object GeelyWheelKeys {
                     for (key in BoyueLSettings.configurableKeys(context)) for (longPress in listOf(false, true)) {
                         val action = BoyueLSettings.action(context, key, longPress)
                         if (action != BoyueWheelAction.NONE &&
-                            ((action.dashboard && dashboardOwner) || (!action.dashboard && mediaOwner &&
+                            ((action == BoyueWheelAction.CYCLE_ESP32 && esp32Owner) || (action.dashboard && dashboardOwner) || (!action.dashboard && mediaOwner &&
                                 (!AirPlayPersistence.loadCarBluetoothAudio(context) || key == GeelyWheelKeyCodes.KEY_VOICE_ASSIST)))) codes.add(key)
                     }
                 }
@@ -287,7 +290,7 @@ internal object GeelyWheelKeys {
         val context = appContext ?: return
         updateMenuMonitor(context)
         unbind()
-        if (mediaOwner || dashboardOwner || learning != null) {
+        if (mediaOwner || dashboardOwner || esp32Owner || learning != null) {
             appContext = context
             bindLocked()
         }
@@ -324,7 +327,8 @@ internal object GeelyWheelKeys {
                 if (!wheelEnabled(context)) return@post
                 if (BoyueLSettings.selected(context) && keyCode in BoyueLSettings.originalOnlyKeys) return@post
                 if (!longPress && actionDebounce.suppressesShort(keyCode, SystemClock.elapsedRealtime())) return@post
-                if (dashboardOwner && NativeDashboardSettings.enabled(context)) {
+                if (dashboardOwner && NativeDashboardSettings.enabled(context) &&
+                    BoyueLSettings.action(context,keyCode,longPress) != BoyueWheelAction.CYCLE_ESP32) {
                     val isMode = keyCode == modeKey
                     val direction = Fx11MenuWheelPolicy.direction(keyCode)
                     val menuTrack = !isMode && !longPress && direction != 0 && menuMonitor != null &&
@@ -353,7 +357,9 @@ internal object GeelyWheelKeys {
                     if (keyCode !in BoyueLSettings.configurableKeys(context)) return@post
                     val action = BoyueLSettings.action(context, keyCode, longPress)
                     if (action == BoyueWheelAction.NONE) return@post
-                    if (action.dashboard) {
+                    if (action == BoyueWheelAction.CYCLE_ESP32) {
+                        if (!esp32Owner || !Esp32Settings.enabled(context)) return@post
+                    } else if (action.dashboard) {
                         if (!dashboardOwner || !NativeDashboardSettings.enabled(context)) return@post
                     } else if (!mediaOwner || (AirPlayPersistence.loadCarBluetoothAudio(context) &&
                             keyCode != GeelyWheelKeyCodes.KEY_VOICE_ASSIST)) return@post
@@ -362,6 +368,7 @@ internal object GeelyWheelKeys {
                     when (action) {
                         BoyueWheelAction.TOGGLE_DASHBOARD -> NativeDashboardService.toggleProjection(context)
                         BoyueWheelAction.CYCLE_DASHBOARD -> NativeDashboardSettings.cycle(context)
+                        BoyueWheelAction.CYCLE_ESP32 -> Esp32Settings.command(context,-1)
                         BoyueWheelAction.SIRI -> CarPlayMediaKeys.onExternalSiriKey()
                         BoyueWheelAction.PLAY_PAUSE -> CarPlayMediaKeys.onExternalMediaKey(CarPlayMediaButton.PLAY_PAUSE)
                         BoyueWheelAction.NEXT -> CarPlayMediaKeys.onExternalMediaKey(CarPlayMediaButton.NEXT)
@@ -375,7 +382,7 @@ internal object GeelyWheelKeys {
                 val action = if (BoyueLSettings.selected(context)) BoyueLSettings.action(context, keyCode)
                     else BoyueWheelPolicy.defaultAction(keyCode)
                 when (action) {
-                    BoyueWheelAction.NONE, BoyueWheelAction.TOGGLE_DASHBOARD, BoyueWheelAction.CYCLE_DASHBOARD -> Unit
+                    BoyueWheelAction.NONE, BoyueWheelAction.TOGGLE_DASHBOARD, BoyueWheelAction.CYCLE_DASHBOARD, BoyueWheelAction.CYCLE_ESP32 -> Unit
                     BoyueWheelAction.SIRI -> CarPlayMediaKeys.onExternalSiriKey()
                     BoyueWheelAction.PLAY_PAUSE -> CarPlayMediaKeys.onExternalMediaKey(CarPlayMediaButton.PLAY_PAUSE)
                     BoyueWheelAction.NEXT -> CarPlayMediaKeys.onExternalMediaKey(CarPlayMediaButton.NEXT)

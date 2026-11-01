@@ -8,7 +8,8 @@ internal enum class DashboardStyle(val title: Int) {
     PANORAMA(R.string.settings_dashboard_panorama), REPLICA(R.string.settings_dashboard_replica),
     OEM_OVERLAY(R.string.settings_dashboard_oem_overlay),
     TRACK(R.string.settings_dashboard_track), POLAR(R.string.settings_dashboard_polar),
-    OBSIDIAN(R.string.settings_dashboard_obsidian), STARFIELD(R.string.settings_dashboard_starfield);
+    OBSIDIAN(R.string.settings_dashboard_obsidian), STARFIELD(R.string.settings_dashboard_starfield),
+    CARPLAY_ULTRA(R.string.settings_dashboard_carplay_ultra);
     val concept get() = this in setOf(TRACK, POLAR, OBSIDIAN, STARFIELD)
     val supportsAppearance get() = this == REPLICA || (concept && this != POLAR)
 }
@@ -45,6 +46,7 @@ internal enum class DashboardMode(val title: Int) {
     // Keep persisted ordinals stable. Legacy Panorama pages now keep the map plus a compact card.
     fun forStyle(style: DashboardStyle) = when {
         (style == DashboardStyle.MIDNIGHT || style == DashboardStyle.REPLICA || style.concept) && this == ALL -> MUSIC
+        style == DashboardStyle.CARPLAY_ULTRA -> NAVIGATION
         style == DashboardStyle.PANORAMA && this != TIRES -> MUSIC
         (style == DashboardStyle.OFF || style == DashboardStyle.OEM_OVERLAY) && this == TIRES -> ALL
         else -> this
@@ -64,6 +66,7 @@ internal enum class DashboardMode(val title: Int) {
                 DashboardStyle.MIDNIGHT, DashboardStyle.REPLICA, DashboardStyle.TRACK, DashboardStyle.POLAR,
                 DashboardStyle.OBSIDIAN, DashboardStyle.STARFIELD -> listOf(MUSIC, NAVIGATION, TIRES)
                 DashboardStyle.PANORAMA -> listOf(MUSIC, TIRES)
+                DashboardStyle.CARPLAY_ULTRA -> listOf(NAVIGATION)
                 DashboardStyle.OFF, DashboardStyle.OEM_OVERLAY -> listOf(ALL, NAVIGATION, MUSIC)
             }
     }

@@ -54,8 +54,8 @@ class NativeDashboardMapConfigTest {
             sourceVersion = "366.0", main = main, cluster = cluster))["displays"] as List<*>).map { it as Map<*, *> }
         for (style in styles) for (size in DashboardMapSize.entries) {
             val config = NativeDashboardMapConfig.config(style, size)
-            val expectedCenter = when (style) { DashboardStyle.REPLICA -> 694; DashboardStyle.PANORAMA -> 556
-                DashboardStyle.MIDNIGHT -> 704; else -> 480 }
+            val expectedCenter = when (style) { DashboardStyle.REPLICA -> 694; DashboardStyle.PANORAMA -> 744
+                DashboardStyle.MIDNIGHT -> 732; else -> 480 }
             val safe = requireNotNull(config.safeArea)
             assertEquals(expectedCenter * 2, safe.left + config.widthPixels - safe.right)
             var lastCenter = -1
@@ -80,7 +80,12 @@ class NativeDashboardMapConfigTest {
                     assertEquals(160, focus["originYPixels"])
                     assertEquals(304, focus["heightPixels"])
                 }
-                if (style == DashboardStyle.PANORAMA) assertTrue(x >= 24 && x + w <= config.widthPixels - 400)
+                if (style == DashboardStyle.PANORAMA || style == DashboardStyle.MIDNIGHT) {
+                    // Music is below the left speed display, outside the map window.
+                    assertTrue(x >= 24 && x + w <= config.widthPixels - 24)
+                    assertEquals(152, focus["originYPixels"])
+                    assertEquals(config.heightPixels - 168, focus["heightPixels"])
+                }
             }
             assertEquals(config, NativeDashboardMapConfig.config(style, size, -999))
         }

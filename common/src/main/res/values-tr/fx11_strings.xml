@@ -117,7 +117,7 @@
     <string name="settings_carplay_size_extra_large">Çok büyük</string>
     <string name="settings_carplay_size_largest">En büyük</string>
     <string name="settings_climate_power">CarPlay klima gücü (deneysel)</string>
-    <string name="settings_climate_power_description">CarPlay üzerinden FX11 klima sistemini açıp kapatmaya ve gerçek durumunu almaya izin verir. CarPlay yeniden bağlandıktan sonra uygulanır. Mevcut gösterge ayarları korunur.</string>
+    <string name="settings_climate_power_description">Desteklenen FX11 güç, A/C, sıcaklık, fan, iç sirkülasyon ve AUTO kontrollerini gerçek durumla etkinleştirir. Uygulamak için CarPlay bağlantısını yenileyin. Mevcut göstergeler korunur.</string>
     <string name="settings_dashboard_oem_overlay">Fabrika göstergesi üzerine bindirme (deneysel)</string>
     <string name="settings_dashboard_oem_overlay_description">Fabrika ekran modunu korur ve ortaya sınırlı bir CarPlay haritası, yönlendirme ve müzik penceresi ekler. Bu stili seçin, ardından aşağıdaki düğme veya MODE ile açın. Stili değiştirdikten sonra CarPlay bağlantısını yeniden kurun. Birlikte görünme özelliği araçta hâlâ test edilmelidir.</string>
     <string name="settings_dashboard_oem_overlay_hint">MODE bindirmeyi açar veya kapatır. MENU ile tüm içerik → navigasyon → müzik arasında geçilir. Eksik içerik saydam kalır. Ekran modunu kapatmak veya değiştirmek önce fabrika ekranını geri yükler.</string>

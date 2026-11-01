@@ -62,7 +62,7 @@ data class AirPlayUltraProvisioning(
     }
 
     fun createConfig(
-        cluster: AirPlayDisplayConfig,
+        cluster: AirPlayDisplayConfig?,
         runtime: AirPlayUltraRuntime,
     ): AirPlayUltraConfig {
         val vehicleStateProtocolInfo = AirPlayVehicleStateProtocolInfo.from(

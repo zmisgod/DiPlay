@@ -495,6 +495,7 @@ class CarPlayController(
     fun isClosed(): Boolean = closed
 
     fun isUltraEnabled(): Boolean = airPlayConfig.ultra != null
+    fun isOriginalUltraInstrument(): Boolean = !closed && airPlayConfig.ultra?.theme != null && activeSession?.originalInstrumentNegotiated == true
 
     /** Nonblocking identity for wheel controls: only an unclosed phone with an accepted primary stream. */
     fun activeAirPlaySessionToken(): Any? {
@@ -1600,6 +1601,7 @@ class CarPlayController(
                 deviceIdentifier = deviceIdentifier,
                 publicKey = identity.publicKeyHex,
                 sourceVersion = airPlayConfig.sourceVersion,
+                theme = airPlayConfig.ultra?.theme,
                 accessPointBssid = hotspotInfo.accessPointBssid,
             )
             wirelessRuntimeIdentification = runtimeIdentification
@@ -2423,6 +2425,7 @@ class CarPlayController(
                 airPlayPort = vpnService?.boundPort() ?: airPlayConfig.port,
                 publicKey = identity.publicKeyHex,
                 sourceVersion = airPlayConfig.sourceVersion,
+                theme = airPlayConfig.ultra?.theme,
                 deviceIdentifier = ncmHostMac.macString(),
             )
             onStatus(CarPlayStatus.RunningControl)

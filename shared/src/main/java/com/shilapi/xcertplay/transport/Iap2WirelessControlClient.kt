@@ -283,6 +283,8 @@ class Iap2WirelessControlClient(
                 deviceIdentifier = endpoint.deviceIdentifier,
                 publicKey = endpoint.publicKey,
                 sourceVersion = endpoint.sourceVersion,
+                sdkVersion = endpoint.theme?.sdkVersion,
+                clusterAsset = endpoint.theme?.asset(),
             )
 
         private fun later(
@@ -313,6 +315,7 @@ class Iap2WirelessCarPlayEndpoint(
     val publicKey: String,
     val sourceVersion: String,
     accessPointBssid: ByteArray? = null,
+    val theme: com.shilapi.xcertplay.ultra.UltraThemeProfile? = null,
 ) {
     val ipAddresses: List<String> = ipAddresses.toList()
     val accessPointBssid: ByteArray? = accessPointBssid?.copyOf()

@@ -18,13 +18,14 @@ import kotlin.math.*
 internal data class DashboardLayout(val map: RectF?, val navigation: RectF?, val music: RectF?, val tires: RectF? = null) {
     companion object {
         const val MIDNIGHT_FOOTER_TOP = 472f
-        const val MIDNIGHT_MAP_WIDTH = 1408
-        const val MIDNIGHT_MAP_HEIGHT = 400
+        const val MIDNIGHT_MAP_WIDTH = 1464
+        const val MIDNIGHT_MAP_HEIGHT = 456
         const val PANORAMA_MAP_WIDTH = 1488
         const val PANORAMA_MAP_HEIGHT = 472
         const val REPLICA_MAP_WIDTH = 1388
         const val REPLICA_MAP_HEIGHT = 532
-        const val REPLICA_DIAL_RADIUS = 254f
+        const val REPLICA_DIAL_RADIUS = 264f
+        const val CONCEPT_DIAL_SCALE = 264f / 249f
         const val REPLICA_DIAL_Y = 266f
         const val REPLICA_LEFT_DIAL_X = 266f
         const val REPLICA_RIGHT_DIAL_X = 1654f
@@ -34,12 +35,16 @@ internal data class DashboardLayout(val map: RectF?, val navigation: RectF?, val
         fun of(style: DashboardStyle, mode: DashboardMode): DashboardLayout {
             if (style.concept) {
                 val map = if (mode.forStyle(style) == DashboardMode.NAVIGATION) when(style) {
-                    DashboardStyle.TRACK -> RectF(400f,0f,1780f,532f)
+                    DashboardStyle.TRACK -> RectF(240f,0f,1780f,532f)
                     DashboardStyle.OBSIDIAN -> RectF(0f,0f,1920f,532f)
                     else -> RectF(266f,0f,1654f,532f)
                 } else null
                 val content=RectF(550f,76f,1370f,464f)
-                return DashboardLayout(map, if(map!=null) { if(style==DashboardStyle.OBSIDIAN) RectF(660f,78f,1260f,170f) else RectF(735f,80f,1185f,174f) } else null,
+                return DashboardLayout(map, if(map!=null) { when(style) {
+                    DashboardStyle.OBSIDIAN -> RectF(704f,76f,1216f,174f)
+                    DashboardStyle.TRACK -> RectF(810f,76f,1110f,198f)
+                    else -> RectF(784f,76f,1136f,160f)
+                } } else null,
                     content.takeIf { mode.forStyle(style)==DashboardMode.MUSIC },
                     content.takeIf { mode.forStyle(style)==DashboardMode.TIRES })
             }
@@ -50,15 +55,15 @@ internal data class DashboardLayout(val map: RectF?, val navigation: RectF?, val
                 else -> DashboardLayout(null, null, RectF(548f, 68f, 1372f, 464f))
             }
             if (style == DashboardStyle.PANORAMA) {
-                val card = RectF(1536f, 310f, 1896f, 452f)
-                return DashboardLayout(RectF(432f, 0f, 1920f, 472f), RectF(608f, 24f, 1432f, 116f),
+                val card = RectF(18f, 364f, 414f, 512f)
+                return DashboardLayout(RectF(432f, 60f, 1920f, 532f), RectF(456f, 76f, 1032f, 204f),
                     music = card.takeIf { mode.forStyle(style) == DashboardMode.MUSIC },
                     tires = card.takeIf { mode.forStyle(style) == DashboardMode.TIRES })
             }
             return when (mode.forStyle(style)) {
-                DashboardMode.NAVIGATION -> DashboardLayout(RectF(488f, 60f, 1896f, 460f), RectF(508f, 76f, 1876f, 152f), null)
-                DashboardMode.ALL, DashboardMode.MUSIC -> DashboardLayout(null, null, RectF(488f, 60f, 1432f, 460f))
-                DashboardMode.TIRES -> DashboardLayout(null, null, null, RectF(488f, 60f, 1432f, 460f))
+                DashboardMode.NAVIGATION -> DashboardLayout(RectF(432f, 60f, 1896f, 516f), RectF(456f, 76f, 1032f, 204f), RectF(18f, 364f, 414f, 512f))
+                DashboardMode.ALL, DashboardMode.MUSIC -> DashboardLayout(null, null, RectF(488f, 60f, 1432f, 516f))
+                DashboardMode.TIRES -> DashboardLayout(null, null, null, RectF(488f, 60f, 1432f, 516f))
             }
         }
         fun oem(mode: DashboardMode, navigation: Boolean, music: Boolean): DashboardLayout {
@@ -249,12 +254,17 @@ internal class NativeDashboardView(context: Context, private val preview: Boolea
 /** Always renders real readings. Missing or expired readings are dashes, never simulated zeroes. */
 internal class DashboardCanvas(context: Context, private val viewport: RectF = RectF(0f, 0f, 1920f, 532f)) : View(context) {
     var style = DashboardStyle.MIDNIGHT
+        set(value) {
+            if(field.concept && !value.concept) concepts.release()
+            field=value
+        }
     var appearance = NativeDashboardSettings.effectiveAppearance(context)
     private var artworkTheme: ReplicaArtworkPalette? = null
     private var artworkSweep: SweepGradient? = null
     private val day get() = artworkTheme?.light ?: (style.supportsAppearance && appearance == DashboardAppearance.DAY)
     var panelScale = NativeDashboardSettings.panelScale(context)
     private val concepts = DashboardConceptRenderer()
+    private val guidanceGlyph = DashboardGuidanceGlyph()
     var mode = DashboardMode.ALL
     var snapshot = DashboardSnapshot()
         set(value) {
@@ -373,19 +383,29 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         }
         canvas.restore()
         if (style.concept) {
+            if (mapActive && geometry.map != null) concepts.videoEdges(canvas,style,day)
             concepts.instruments(canvas, style, day, snapshot, ::conceptMusic)
         } else if (style == DashboardStyle.REPLICA) {
             replicaMapEdges(canvas)
             replicaGauge(canvas, DashboardLayout.REPLICA_LEFT_DIAL_X, true)
             replicaGauge(canvas, DashboardLayout.REPLICA_RIGHT_DIAL_X, false)
         } else if (style == DashboardStyle.MIDNIGHT) {
-            gauge(canvas, 224f, true)
+            geometry.map?.let {
+                paint.style=Paint.Style.STROKE;paint.strokeWidth=1.2f;paint.color=Color.rgb(76,100,121)
+                canvas.save();canvas.clipRect(it)
+                canvas.drawRoundRect(it,12f,12f,paint)
+                canvas.restore()
+            }
             if (mode.forStyle(style) == DashboardMode.NAVIGATION) {
-                text(canvas, number(VehicleSignal.ENGINE_RPM) + " rpm", 224f, 447f, 23f, muted, Paint.Align.CENTER, 340f)
-            } else gauge(canvas, 1696f, false)
+                // Navigation keeps music under the compact speed dial, outside the video viewport.
+                canvas.save(); canvas.translate(216f, 214f); canvas.scale(.80f, .80f)
+                canvas.translate(-224f, -245f); gauge(canvas, 224f, true, compact = true); canvas.restore()
+                text(canvas, number(VehicleSignal.ENGINE_RPM) + " rpm", 216f, 340f, 22f, muted, Paint.Align.CENTER, 340f)
+            } else {
+                fullHeightMidnightGauge(canvas, 240f, true); fullHeightMidnightGauge(canvas, 1680f, false)
+            }
         } else {
             panoramaSpeed(canvas)
-            if (snapshot.navigation != null) trip(canvas, RectF(1560f, 24f, 1896f, 160f))
         }
         if (snapshot.navigation != null) geometry.navigation?.let { navigation(canvas, it) }
         geometry.music?.let { music(canvas, it) }
@@ -394,9 +414,15 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             DashboardStyle.REPLICA, DashboardStyle.TRACK, DashboardStyle.POLAR, DashboardStyle.OBSIDIAN, DashboardStyle.STARFIELD -> replicaTires(canvas, it)
             else -> tirePage(canvas, it)
         } }
+        // Reserve a stable header surface: card antialiasing must not bleed into status gaps.
+        if(style == DashboardStyle.MIDNIGHT || style == DashboardStyle.PANORAMA) {
+            paint.style=Paint.Style.FILL;paint.color=bg
+            canvas.drawRect(0f,0f,1920f,60f,paint)
+        }
         // Every full dashboard uses the same icons, state semantics and anchored modules.
         replicaStatus(canvas)
-        replicaFooter(canvas)
+        if(style == DashboardStyle.MIDNIGHT || style == DashboardStyle.PANORAMA) topVehicleInfo(canvas)
+        else replicaFooter(canvas)
         if (menuPagingActive) menuHint.draw(canvas, style)
         canvas.restore()
         } finally {
@@ -428,10 +454,8 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         if(speed) {
             text(c,speedNumber(),cx,cy+27,90f,white,Paint.Align.CENTER,216f)
             text(c,"km/h",cx,cy+63,25f,artworkTheme?.secondary ?: if(day) ReplicaDayPalette.secondary else Color.rgb(166,190,178),Paint.Align.CENTER,170f)
-            val front = snapshot.coolantC == null && snapshot.frontCompartmentC != null
-            if (front) text(c,label(R.string.dashboard_front_compartment),cx-49,cy+159,18f,muted,Paint.Align.CENTER,62f)
-            else coolantIcon(c,cx-49,cy+151)
-            text(c,((snapshot.coolantC ?: snapshot.frontCompartmentC)?.roundToInt()?.toString() ?: "—")+"°C",cx+26,cy+159,25f,
+            coolantIcon(c,cx-49,cy+151)
+            text(c,(snapshot.coolantGaugePercent?.roundToInt()?.toString() ?: "—")+"%",cx+26,cy+159,25f,
                 white,Paint.Align.CENTER,112f)
         } else {
             replicaDialMusic(c)
@@ -605,6 +629,10 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private val replicaTopBarRadii = floatArrayOf(0f,0f,0f,0f,20f,20f,20f,20f)
     private val replicaBottomBarRadii = floatArrayOf(20f,20f,20f,20f,0f,0f,0f,0f)
     private fun replicaBar(c: Canvas, bounds: RectF, roundTop: Boolean) {
+        if (style.concept) {
+            concepts.bar(c,bounds,roundTop,style,day)
+            return
+        }
         replicaBarPath.reset()
         replicaBarPath.addRoundRect(bounds, if (roundTop) replicaBottomBarRadii else replicaTopBarRadii, Path.Direction.CW)
         paint.color = artworkTheme?.surface ?: if(day) { if(style.concept) 0xffe4e3e1.toInt() else ReplicaDayPalette.surface } else bg; paint.style = Paint.Style.FILL
@@ -655,6 +683,21 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             c.restore()
         }
         replicaIcon(c,1374f,30f,30f) { lampIcon(c,VehicleSignal.RIGHT_TURN,1374f,30f) }
+    }
+    /** Midnight / Panorama reserve the top wings for vehicle data, leaving the map bottom unobstructed. */
+    private fun topVehicleInfo(c: Canvas) {
+        replicaBar(c,RectF(16f,0f,482f,60f),roundTop=false)
+        replicaBar(c,RectF(1438f,0f,1904f,60f),roundTop=false)
+        text(c,clockFormat.format(Date()),80f,39f,24f,white,Paint.Align.CENTER,100f)
+        text(c,(snapshot.ambientC?.roundToInt()?.toString() ?: "—")+"°C",212f,39f,24f,white,Paint.Align.CENTER,104f)
+        replicaIcon(c,310f,30f,34f,26f) { fuelIcon(c,310f,30f) }
+        text(c,(snapshot.rangeKm?.roundToInt()?.toString() ?: "—")+" km",344f,39f,24f,white,maxWidth=126f)
+        for(x in listOf(145f,278f,1582f,1726f)) box(c,RectF(x,17f,x+1f,43f),muted,0f)
+        val hold=snapshot.vehicle[VehicleSignal.AUTO_HOLD_ACTIVE]?.value==true
+        val parking=snapshot.vehicle[VehicleSignal.PARKING_BRAKE_ON]?.value==true
+        replicaIcon(c,1510f,30f,38f) { brakeIcon(c,1510f,30f,"A",if(hold) green else muted,active=hold) }
+        replicaIcon(c,1654f,30f,38f) { brakeIcon(c,1654f,30f,"P",if(parking) red else muted,active=parking) }
+        text(c,snapshot.gear,1810f,41f,32f,white,Paint.Align.CENTER,80f)
     }
     private fun replicaHeadlamp(c: Canvas,x: Float,y: Float) {
         // Merge AUTO into the low-beam body. An A requires confirmed selector feedback;
@@ -730,10 +773,19 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     }
     private fun number(signal: VehicleSignal) = snapshot.number(signal)?.roundToInt()?.toString() ?: "—"
     private fun speedNumber() = snapshot.speedKph?.roundToInt()?.toString() ?: "—"
-    private fun gauge(c: Canvas, cx: Float, speed: Boolean) {
+    /** Music/tire double-dial pages use all available height below the status row. */
+    private fun fullHeightMidnightGauge(c: Canvas,cx:Float,speed:Boolean) {
+        c.save();c.translate(cx,296f)
+        paint.style=Paint.Style.FILL;paint.color=Color.rgb(8,21,32)
+        c.drawCircle(0f,0f,234f,paint)
+        val factor=234f/189.5f
+        c.scale(factor,factor);c.translate(-224f,-245f)
+        gauge(c,224f,speed);c.restore()
+    }
+    private fun gauge(c: Canvas, cx: Float, speed: Boolean, compact: Boolean = false) {
         val cy = 245f; val radius = 180f
         val dial = if (speed) DashboardDial.SPEED else DashboardDial.RPM
-        paint.color = panel; paint.style = Paint.Style.STROKE; paint.strokeWidth = 13f
+        paint.color = Color.rgb(10,47,65); paint.style = Paint.Style.STROKE; paint.strokeWidth = 13f
         val oval = RectF(cx-radius, cy-radius, cx+radius, cy+radius)
         c.drawArc(oval, 135f, 270f, false, paint)
         val value = if (speed) snapshot.speedKph else snapshot.number(VehicleSignal.ENGINE_RPM)
@@ -742,6 +794,11 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             c.drawArc(oval, dial.angle(7000.0), dial.sweep(1000.0), false, paint)
         }
         if (value != null) {
+            paint.strokeCap = Paint.Cap.ROUND
+            for ((width,alpha) in listOf(19f to 8,12f to 18)) {
+                paint.color=Color.argb(alpha,Color.red(accent),Color.green(accent),Color.blue(accent));paint.strokeWidth=width
+                c.drawArc(oval,135f,dial.sweep(value),false,paint)
+            }
             paint.color = accent; paint.strokeWidth = 7f; paint.strokeCap = Paint.Cap.ROUND
             c.drawArc(oval, 135f, dial.sweep(value), false, paint)
             paint.strokeCap = Paint.Cap.BUTT
@@ -749,12 +806,12 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         for (i in 0..dial.divisions) {
             val angle = Math.toRadians(dial.angle(dial.valueAtTick(i)).toDouble())
             val major = i % dial.majorEvery == 0
-            paint.color = if (major) muted else line; paint.strokeWidth = if (major) 3f else 2f
+            paint.color = if (major) white else Color.rgb(147,172,187); paint.strokeWidth = if (major) 3f else 1.1f
             val inner = if (major) radius - 24 else radius - 15
             c.drawLine(cx + cos(angle).toFloat()*inner, cy + sin(angle).toFloat()*inner,
                 cx + cos(angle).toFloat()*(radius-6), cy + sin(angle).toFloat()*(radius-6), paint)
             if (major) text(c, dial.valueAtTick(i).roundToInt().toString(), cx + cos(angle).toFloat()*130,
-                cy + sin(angle).toFloat()*130 + 7, if (speed) 20f else 18f, muted, Paint.Align.CENTER)
+                cy + sin(angle).toFloat()*130 + 7, if (speed) 20f else 18f, Color.rgb(203,218,230), Paint.Align.CENTER)
         }
         if (value != null) {
             val angle = Math.toRadians(dial.angle(value).toDouble())
@@ -763,17 +820,12 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
                 cx + cos(angle).toFloat()*radius, cy + sin(angle).toFloat()*radius, paint)
         }
         val display = if (speed) speedNumber() else number(VehicleSignal.ENGINE_RPM)
-        text(c, display, cx, 278f, if (speed) 102f else 76f, white, Paint.Align.CENTER, 250f)
+        text(c, display, cx, 278f, if (speed) { if(compact) 122f else 102f } else 76f, white, Paint.Align.CENTER, 250f)
         text(c, if (speed) "km/h" else "rpm", cx, 314f, 24f, muted, Paint.Align.CENTER)
-        if (speed) text(c, snapshot.gear, cx, 409f, 38f, accent, Paint.Align.CENTER, 230f)
+
     }
     private fun navigation(c: Canvas, r: RectF) {
         val nav = snapshot.navigation ?: return
-        box(c,r,if(style.concept) { if(day) 0xffe4e3e1.toInt() else 0xe6222537.toInt() } else when(style) {
-            DashboardStyle.REPLICA -> if(day) Color.argb(242,248,250,247) else Color.argb(205,6,18,24)
-            DashboardStyle.MIDNIGHT -> Color.argb(235,6,18,24)
-            else -> panel
-        },16f)
         val res = when(nav.icon) {
             2 -> R.drawable.ic_turn_card_turn_left; 3 -> R.drawable.ic_turn_card_turn_right
             4 -> R.drawable.ic_turn_card_turn_slight_left; 5 -> R.drawable.ic_turn_card_turn_slight_right
@@ -783,25 +835,37 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             else -> R.drawable.ic_turn_card_straight
         }
         if (res != glyphId) { glyphId = res; glyph = context.getDrawable(res)?.mutate() }
+        if (style.concept) {
+            val distance = if (nav.distanceMeters < 0) "—" else if (nav.distanceMeters <= 20)
+                context.getString(R.string.turn_card_now) else distance(nav.distanceMeters)
+            val remaining = listOfNotNull(nav.remainingMeters?.takeIf { it >= 0 }?.let { distance(it.toInt()) },
+                nav.remainingSeconds?.takeIf { it >= 0 }?.let { "${(it + 59) / 60} min" }).joinToString(" · ")
+            concepts.navigation(c, r, style, day, glyph, nav.icon, distance, nav.road, remaining)
+            return
+        }
+        box(c,r,if(style.concept) { if(day) 0xffe4e3e1.toInt() else 0xe6222537.toInt() } else when(style) {
+            DashboardStyle.REPLICA -> if(day) Color.argb(242,248,250,247) else Color.argb(205,6,18,24)
+            DashboardStyle.MIDNIGHT -> Color.argb(235,6,18,24)
+            else -> panel
+        },16f)
+        if (style == DashboardStyle.MIDNIGHT || style == DashboardStyle.PANORAMA) {
+            paint.style=Paint.Style.STROKE;paint.strokeWidth=1.2f;paint.color=line
+            c.drawRoundRect(r,14f,14f,paint)
+            guidanceGlyph.draw(c,RectF(r.left+24,r.top+22,r.left+90,r.top+90),nav.icon,accent,glyph)
+            val d=if(nav.distanceMeters<0) "—" else if(nav.distanceMeters<=20) context.getString(R.string.turn_card_now) else distance(nav.distanceMeters)
+            val road=if(nav.roundaboutExit in 1..9) context.getString(R.string.turn_card_exit,nav.roundaboutExit)+" · "+nav.road else nav.road
+            val remaining=listOfNotNull(nav.remainingMeters?.takeIf { it>=0 }?.let { distance(it.toInt()) },
+                nav.remainingSeconds?.takeIf { it>=0 }?.let { "${(it+59)/60} min" }).joinToString(" · ")
+            text(c,d,r.left+120,r.top+40,37f,white,maxWidth=r.width()-144)
+            text(c,road,r.left+120,r.top+76,25f,white,maxWidth=r.width()-144)
+            text(c,remaining,r.left+120,r.bottom-18,21f,muted,maxWidth=r.width()-144)
+            return
+        }
         glyph?.setTint(if(style==DashboardStyle.REPLICA) white else accent) // A live style change may retain the same turn glyph.
         val size = r.height() - 26
         glyph?.setBounds((r.left+14).toInt(), (r.top+13).toInt(), (r.left+14+size).toInt(), (r.bottom-13).toInt()); glyph?.draw(c)
         val x = r.left + size + 32
         val distance = if (nav.distanceMeters < 0) "—" else if (nav.distanceMeters <= 20) context.getString(R.string.turn_card_now) else distance(nav.distanceMeters)
-        if (style.concept) {
-            val dividerX=r.left+size+24f
-            box(c,RectF(dividerX,r.top+16,dividerX+1,r.bottom-16),muted,0f)
-            text(c,distance,dividerX+20,r.top+39,32f,white,maxWidth=r.right-dividerX-38)
-            text(c,nav.road,dividerX+20,r.bottom-17,22f,muted,maxWidth=r.right-dividerX-38)
-            val remaining=listOfNotNull(nav.remainingMeters?.takeIf { it>=0 }?.let { distance(it.toInt()) },
-                nav.remainingSeconds?.takeIf { it>=0 }?.let { "${(it+59)/60} min" }).joinToString(" · ")
-            if(remaining.isNotEmpty()) {
-                val summary=RectF(780f,420f,1140f,466f)
-                box(c,summary,if(day) 0xeefafafa.toInt() else 0xe609131c.toInt(),14f)
-                text(c,remaining,960f,450f,23f,white,Paint.Align.CENTER,330f)
-            }
-            return
-        }
         if (style == DashboardStyle.REPLICA) {
             text(c, distance, x, r.top+35, 31f, white, maxWidth=r.width()-size-246)
             text(c, nav.road, x, r.bottom-14, 23f, muted, maxWidth=r.width()-size-246)
@@ -809,16 +873,6 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
                 25f, white, Paint.Align.RIGHT, 180f)
             text(c, nav.remainingSeconds?.takeIf { it >= 0 }?.let { "${(it+59)/60} min" } ?: "—", r.right-22, r.bottom-14,
                 22f, muted, Paint.Align.RIGHT, 180f)
-            return
-        }
-        if (style == DashboardStyle.MIDNIGHT) {
-            text(c, distance, x, r.centerY()+11, 32f, white, maxWidth=172f)
-            val road = if (nav.roundaboutExit in 1..9) context.getString(R.string.turn_card_exit, nav.roundaboutExit)+" · "+nav.road else nav.road
-            text(c, road, x+192, r.centerY()+10, 27f, white, maxWidth=r.width()-size-548)
-            val remaining = listOfNotNull(nav.remainingSeconds?.takeIf { it >= 0 }?.let { "${(it+59)/60} min" },
-                nav.remainingMeters?.takeIf { it >= 0 }?.let { distance(it.toInt()) }).joinToString(" · ")
-                .ifBlank { nav.arrivalEpochSeconds?.takeIf { it > 0 }?.let { clockFormat.format(Date(it*1000)) } ?: "—" }
-            text(c, remaining, r.right-22, r.centerY()+9, 23f, muted, Paint.Align.RIGHT, 280f)
             return
         }
         text(c, distance, x, r.top+34, 29f, white, maxWidth = r.width()-size-60)
@@ -858,11 +912,11 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private fun music(c: Canvas, r: RectF) {
         if(style.concept) { conceptMusic(c,r);return }
         if (style == DashboardStyle.REPLICA) { replicaMusic(c, r); return }
-        if (style == DashboardStyle.MIDNIGHT) { midnightMusic(c, r); return }
+        if (style == DashboardStyle.MIDNIGHT && r.width() > 450f) { midnightMusic(c, r); return }
         contentPanel(c, r)
         val info = snapshot.music.info
         val hasTrack = !info.title.isNullOrBlank() || !info.artist.isNullOrBlank() || !info.album.isNullOrBlank()
-        val art = RectF(r.left+16, r.top+16, r.left+94, r.top+94)
+        val art = RectF(r.left+16, r.top+16, r.left+120, r.top+120)
         box(c, art, Color.rgb(23, 43, 51), 9f)
         val bitmap = snapshot.music.artwork?.takeIf { !it.isRecycled && hasTrack }
         if (bitmap != null) {
@@ -878,7 +932,7 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
         val detail = listOfNotNull(info.artist?.takeIf { it.isNotBlank() }, info.album?.takeIf { it.isNotBlank() }).joinToString(" · ")
         musicText(c, detail, x, r.top+78, 20f, muted, maxWidth=r.right-x-16)
         if (!hasTrack) return
-        val left=r.left+16; val right=r.right-16; val y=r.bottom-24
+        val left=x; val right=r.right-16; val y=r.bottom-30
         box(c, RectF(left,y,right,y+5),line,3f)
         val duration=info.durationMillis?.takeIf { it>0 }; val elapsed=info.elapsedMillis?.coerceAtLeast(0)
         if (duration!=null && elapsed!=null) box(c,RectF(left,y,left+(right-left)*(elapsed.toFloat()/duration).coerceIn(0f,1f),y+5),accent,3f)
@@ -896,15 +950,23 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
             paint.style=Paint.Style.FILL;paint.shader=null;paint.color=Color.WHITE
             c.drawBitmap(art,Rect((art.width-crop)/2,(art.height-crop)/2,(art.width+crop)/2,(art.height+crop)/2),cover,paint);c.restore()
         } else text(c,"♪",r.centerX(),cover.centerY()+20,64f,muted,Paint.Align.CENTER,r.width())
-        musicText(c,title.ifBlank { label(R.string.dashboard_no_music) },r.centerX(),cover.bottom+25,23f,white,Paint.Align.CENTER,r.width()-16)
-        musicText(c,info.artist.orEmpty(),r.centerX(),cover.bottom+47,18f,muted,Paint.Align.CENTER,r.width()-16)
-        if(title.isNotBlank()) {
+        val inset = r.width() < 400f
+        val leftAligned = inset && style == DashboardStyle.OBSIDIAN
+        val tx=if(leftAligned) cover.left else r.centerX()
+        val align=if(leftAligned) Paint.Align.LEFT else Paint.Align.CENTER
+        val textWidth=if(leftAligned) r.right-cover.left-10 else r.width()-16
+        val titleSize=if(inset && style==DashboardStyle.TRACK) 30f else 23f
+        musicText(c,title.ifBlank { label(R.string.dashboard_no_music) },tx,cover.bottom+titleSize+5,titleSize,white,align,textWidth)
+        musicText(c,info.artist.orEmpty(),tx,cover.bottom+titleSize+34,20f,muted,align,textWidth)
+        // Starfield's original inset is deliberately just cover, metadata and RPM; the center page retains playback progress.
+        if(title.isNotBlank() && !(inset && style==DashboardStyle.STARFIELD)) {
             val duration=info.durationMillis?.takeIf { it>0 }
             val elapsed=info.elapsedMillis?.coerceAtLeast(0)
             if(duration!=null && elapsed!=null) {
                 val y=r.bottom-5f
-                box(c,RectF(r.left+10,y,r.right-10,y+3),line,2f)
-                box(c,RectF(r.left+10,y,r.left+10+(r.width()-20)*(elapsed.toFloat()/duration).coerceIn(0f,1f),y+3),accent,2f)
+                val progressColor=if(style==DashboardStyle.OBSIDIAN) { if(day) 0xff00b58d.toInt() else 0xff4de4b9.toInt() } else accent
+                box(c,RectF(r.left+10,y,r.right-10,y+4),line,2f)
+                box(c,RectF(r.left+10,y,r.left+10+(r.width()-20)*(elapsed.toFloat()/duration).coerceIn(0f,1f),y+4),progressColor,2f)
             }
         }
     }
@@ -963,17 +1025,15 @@ internal class DashboardCanvas(context: Context, private val viewport: RectF = R
     private val green get() = if(day) ReplicaDayPalette.green else Color.rgb(100, 224, 166)
     private fun label(id: Int) = context.getString(id)
     private fun panoramaSpeed(c: Canvas) {
-        listOf(VehicleSignal.LEFT_TURN, VehicleSignal.AUTO_HEADLIGHTS, VehicleSignal.LOW_BEAM,
-            VehicleSignal.HIGH_BEAM, VehicleSignal.POSITION_LIGHT, VehicleSignal.REAR_FOG, VehicleSignal.RIGHT_TURN)
-            .forEachIndexed { index, signal -> lampIcon(c, signal, 40f+(343f/6f)*index, 62f) }
-        text(c, speedNumber(), 216f, 290f, 184f, white, Paint.Align.CENTER, 400f)
-        text(c, "km/h", 56f, 334f, 29f, muted, maxWidth=240f)
-        text(c, snapshot.gear, 56f, 426f, 46f, white, maxWidth=80f)
-        text(c, number(VehicleSignal.ENGINE_RPM)+" rpm", 400f, 426f, 24f, muted, Paint.Align.RIGHT, 232f)
-        box(c,RectF(431f,0f,432f,472f),line,0f)
-        // An opaque backing keeps this independent status icon readable above any map theme.
-        contentPanel(c,RectF(468f,24f,548f,116f))
-        laneCenteringIcon(c,508f,70f)
+        paint.style = Paint.Style.FILL
+        paint.shader = LinearGradient(0f,0f,432f,532f,0xff07141b.toInt(),0xff020b11.toInt(),Shader.TileMode.CLAMP)
+        c.drawRect(0f,0f,432f,532f,paint)
+        paint.shader = null
+        text(c, speedNumber(), 216f, 246f, 184f, white, Paint.Align.CENTER, 390f)
+        text(c, "km/h", 216f, 286f, 29f, muted, Paint.Align.CENTER, 240f)
+        text(c, number(VehicleSignal.ENGINE_RPM)+" rpm", 216f, 326f, 24f, muted, Paint.Align.CENTER, 270f)
+        box(c,RectF(431f,0f,432f,532f),line,0f)
+
     }
     private fun panoramaTires(c: Canvas, r: RectF) {
         contentPanel(c,r)

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">CarPlay climate entry (experimental)</string>
+    <string name="settings_climate_power_description">Allow supported FX11 climate controls and real status: power, A/C, temperature, fan, recirculation and AUTO. Reconnect CarPlay to apply. Existing dashboard styles are preserved. This option controls the CarPlay entry, not the current vehicle climate power. Changes apply after reconnecting.</string>
+</resources>

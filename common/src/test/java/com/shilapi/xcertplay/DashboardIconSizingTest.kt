@@ -90,12 +90,24 @@ class DashboardIconSizingTest {
             val first=frame(v);val repeated=frame(v)
             for(x in 600..1320 step 4) for(y in 70..470 step 4)
                 assertEquals("Repeated render loses content: $style",first.getPixel(x,y),repeated.getPixel(x,y))
+            // Track and Obsidian put arrival information inside their instruction card;
+            // the two ring designs keep a separate lower summary.
+            val summary = when(style) {
+                DashboardStyle.TRACK -> Rect(830,156,1090,195)
+                DashboardStyle.OBSIDIAN -> Rect(1000,125,1205,165)
+                else -> Rect(784,424,1136,470)
+            }
+            v.snapshot=v.snapshot.copy(navigation=v.snapshot.navigation!!.copy(remainingSeconds=null,remainingMeters=null))
+            val noSummary=frame(v)
+            assertTrue("Live summary must disappear when remaining data is absent: $style",
+                (summary.left until summary.right).sumOf { x -> (summary.top until summary.bottom).count { y ->
+                    first.getPixel(x,y)!=noSummary.getPixel(x,y)
+                } }>20)
             v.snapshot=v.snapshot.copy(navigation=null)
             val empty=frame(v)
             val card=v.geometry.navigation!!
             assertNotEquals("Instruction card must appear only with guidance",first.getPixel(960,card.top.toInt()+5),empty.getPixel(960,card.top.toInt()+5))
-            assertNotEquals("Summary must appear only with guidance",first.getPixel(960,424),empty.getPixel(960,424))
-            first.recycle();repeated.recycle();empty.recycle()
+            first.recycle();repeated.recycle();noSummary.recycle();empty.recycle()
         }
     }
     @Test fun followCarUsesItsActual48UnitViewportAndFooterSeparatesEveryGroup() {

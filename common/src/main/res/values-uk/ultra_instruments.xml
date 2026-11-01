@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">Оригінальні прилади CarPlay Ultra (експериментально)</string>
+    <string name="settings_dashboard_ultra_hint">Використовує відеопотік приладів iPhone. Після зміни підключіть CarPlay знову. Потрібні сумісні iOS і тема; перевірка на авто ще потрібна.</string>
+    <string name="settings_dashboard_ultra_waiting">Очікування приладів CarPlay Ultra. Підключіть CarPlay знову.</string>
+</resources>

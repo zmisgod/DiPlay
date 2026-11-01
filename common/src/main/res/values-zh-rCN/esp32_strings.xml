@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">ESP32 副屏（实验性）</string>
+    <string name="esp32_enable">发送到 ESP32</string>
+    <string name="esp32_hint">USB 设置并授权后可自动识别重连，不更改车机网络。USB 地图最高约 4 帧/秒，其他页面和 Wi-Fi 约每秒刷新。请填配对码。</string>
+    <string name="esp32_host">设备 IP / 主机名</string>
+    <string name="esp32_token">配对码</string>
+    <string name="esp32_invalid">地址或配对码格式不正确</string>
+    <string name="esp32_navigation">导航信息</string>
+    <string name="esp32_music">音乐信息</string>
+    <string name="esp32_status">查看连接状态</string>
+    <string name="esp32_connected">已连接</string>
+    <string name="esp32_disconnected">未连接，请检查地址和配对码</string>
+    <string name="esp32_no_navigation">暂无导航</string>
+    <string name="esp32_no_music">暂无音乐</string>
+    <string name="esp32_wheel">切换 ESP32 页面</string>
+    <string name="esp32_carplay">仪表导航地图</string>
+    <string name="esp32_no_carplay">等待仪表导航地图</string>
+    <string name="esp32_orientation">全页面 HUD 方向</string>
+    <string name="esp32_normal">正常显示</string>
+    <string name="esp32_mirror_vertical">上下镜像（HUD 反射）</string>
+    <string name="esp32_mirror_horizontal">左右镜像</string>
+    <string name="esp32_rotate">旋转 180°</string>
+    <string name="esp32_orientation_hint">导航、音乐、地图统一翻转。地图中央画面铺满副屏，检测到的黑边会被裁掉，不留底部分页栏。</string>
+    <string name="esp32_upgrade">请先将 ESP32 固件更新至 v0.2.0 或更高版本</string>
+    <string name="esp32_transport">连接方式</string>
+    <string name="esp32_usb_permission">连接 / 授权 USB</string>
+    <string name="esp32_usb_missing">请用数据线接入 ESP32，并在设置中授权 USB</string>
+    <string name="esp32_instruction_left">前方左转</string>
+    <string name="esp32_instruction_right">前方右转</string>
+    <string name="esp32_instruction_straight">前方直行</string>
+</resources>

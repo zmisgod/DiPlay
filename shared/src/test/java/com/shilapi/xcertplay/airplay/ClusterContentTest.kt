@@ -91,6 +91,40 @@ class ClusterContentTest {
         return RtspMessage.parseMessages(plaintext).messages.map { BplistCodec.decode(it.body) as Map<String, Any?> }
     }
 
+    @Test fun missingMainRecoveryUsesMainUuidOnceWithoutRetargetingOrClosingCluster() {
+        val session = session(CarPlayClusterDisplay.MAP_URL)
+        try {
+            setup(session) // only 111 exists, matching the car capture
+            val event = eventReady(session)
+            assertFalse(session.recoverMissingMainScreen()) // ordinary CarPlay never gets this command
+            session.javaClass.getDeclaredField("vehicleProtocolNegotiated").apply { isAccessible = true }.set(session, true)
+            val cluster = session.clusterContentRoute()
+            assertTrue(session.recoverMissingMainScreen())
+            assertFalse(session.recoverMissingMainScreen())
+            val sent = commands(event).single()
+            assertEquals("showUI", sent["type"])
+            assertEquals(mapOf("uuid" to AirPlayInfoPlist.MAIN_UUID), sent["params"])
+            assertEquals(cluster, session.clusterContentRoute())
+            assertFalse(session.isClosed)
+        } finally { session.close() }
+    }
+
+    @Test fun mainSetupAndClosedSessionsSuppressRecovery() {
+        for (close in listOf(false,true)) {
+            val session = session(CarPlayClusterDisplay.MAP_URL)
+            try {
+                val event = eventReady(session)
+                session.javaClass.getDeclaredField("vehicleProtocolNegotiated").apply { isAccessible = true }.set(session, true)
+                if(close) session.close() else {
+                    session.javaClass.getDeclaredMethod("handleStreams", List::class.java).apply { isAccessible = true }
+                        .invoke(session, listOf(mapOf("type" to 110)))
+                }
+                assertFalse(session.recoverMissingMainScreen())
+                assertTrue(commands(event).isEmpty())
+            } finally { session.close() }
+        }
+    }
+
     @Test fun aSuccessfulSwitchPublishesTheDeliveredUrlAndInvalidatesTheOldRoute() {
         val session = session(CarPlayClusterDisplay.Content.TURN_CARD.url)
         try {

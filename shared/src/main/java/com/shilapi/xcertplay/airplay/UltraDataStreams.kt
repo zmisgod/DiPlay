@@ -9,7 +9,7 @@ import java.net.InetAddress
 /** Session-scoped Ultra streams, independent of DiPlay's existing iAP and video-in-car transports. */
 internal class UltraDataStreams(private val session: AirPlaySession, private val config: AirPlayConfig) : Closeable {
     private data class Entry(val stream: RcsDataStream, val handler: RcsDataStreamHandler, var pending: Boolean = true)
-    private val streams = linkedMapOf<Long, Entry>()
+    private val streams = java.util.concurrent.ConcurrentHashMap<Long, Entry>()
     private var enabled = emptySet<String>()
     private var nextId = 100L
     private var closed = false
@@ -25,8 +25,9 @@ internal class UltraDataStreams(private val session: AirPlaySession, private val
             if (config.ultra != null) session.logDebug("Ultra channel rejected reason=$reason")
             return null
         }
-        if (closed || streams.size >= 8) return rejected("closed-or-capacity")
+        if (closed) return rejected("closed-or-capacity")
         val type = RcsClientTypes.findByUuid(request["clientTypeUUID"] as? String ?: "") ?: return null
+        if (streams.size >= 8 && streams.values.none { it.stream.clientType == type }) return rejected("closed-or-capacity")
         val runtime = config.ultra?.runtime ?: return rejected("runtime-unavailable")
         if (type.feature?.wireName !in enabled || !runtime.supports(type)) return rejected("feature-or-handler-unavailable")
         val seed = unsignedSeed(request["seed"]) ?: return rejected("invalid-seed")
@@ -38,10 +39,30 @@ internal class UltraDataStreams(private val session: AirPlaySession, private val
         stream.onDiagnostic = session::logDebug
         try {
             val handler = runtime.create(stream) ?: run { stream.close(); return rejected("handler-unavailable") }
-            val port = stream.listen()
             // A distinct ID is essential: TEARDOWN of one CAF channel must not close iAP or its peer.
             val id = nextId++
-            streams[id] = Entry(stream, handler)
+            val entry = Entry(stream, object : RcsDataStreamHandler by handler {
+                override fun onStreamClosed(stream: RcsDataStream, cause: Throwable?) {}
+            })
+            stream.onClosed = { cause ->
+                // No session monitor here: callbacks may run while another stream is closing.
+                runCatching { handler.onStreamClosed(stream, cause) }
+                if (streams.remove(id, entry)) session.logDebug("Ultra channel removed client=${type.name} streamID=$id reason=peer-closed")
+            }
+            val port = stream.listen()
+            streams[id] = entry
+            if (stream.isClosed) {
+                streams.remove(id, entry)
+                stream.close()
+                return rejected("peer-closed-before-setup")
+            }
+            // Match LIVI: one live lane per client type. Failed SETUP keeps the old lane intact.
+            streams.entries.filter { it.key != id && it.value.stream.clientType == type }.forEach { old ->
+                if (streams.remove(old.key, old.value)) {
+                    session.logDebug("Ultra channel replaced client=${type.name} oldID=${old.key} newID=$id")
+                    old.value.stream.close()
+                }
+            }
             session.logDebug("Ultra channel opened client=${type.name} streamID=$id port=$port")
             return linkedMapOf<String, Any?>("type" to 130, "streamID" to id, "dataPort" to port).apply {
                 request["streamConnectionID"]?.let { put("streamConnectionID", it) }

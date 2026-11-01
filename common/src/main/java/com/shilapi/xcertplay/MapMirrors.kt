@@ -62,6 +62,8 @@ internal object MapMirrors {
         onChanged?.invoke()
     }
 
+    internal fun captureSurface(): Surface? = surfaces.values.firstOrNull { it.isValid }
+
     val any: Boolean get() = surfaces.isNotEmpty()
 
     /** Whether a launcher shows the map (see [MapEmbedService]), so the centre card is not needed. */

@@ -56,8 +56,9 @@ class CafMessageReader internal constructor(
         values() as? List<Any?>
             ?: throw CafProtocolException("${command.wireName}.values is not an array")
 
-    fun errors(): Map<Long, Long> =
-        message.errors ?: throw CafProtocolException("${command.wireName} has no errors map")
+    fun errors(): Map<Long, Long> = message.errors ?: if (command in setOf(CafCommand.READ_RESPONSE, CafCommand.REGISTER_RESPONSE)) {
+        emptyMap()
+    } else throw CafProtocolException("${command.wireName} has no errors map")
 
     fun requireError(): Long =
         message.error ?: throw CafProtocolException("${command.wireName} has no error")
@@ -156,7 +157,8 @@ internal fun CafMessage.validateWireShape() {
         }
 
         CafErrorRule.IID_ERROR_MAP -> {
-            if (errors == null) {
+            // LIVI omits errors on successful read/register replies; writes still require results.
+            if (errors == null && command != CafCommand.READ_RESPONSE && command != CafCommand.REGISTER_RESPONSE) {
                 throw CafProtocolException("${command.wireName} requires errors")
             }
             if (error != null) {

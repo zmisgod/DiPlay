@@ -1,0 +1,28 @@
+<resources>
+    <string name="fx11_caf_version">DiPlay 版本</string>
+    <string name="fx11_caf_model">車型</string>
+    <string name="fx11_caf_range">剩餘續航</string>
+    <string name="fx11_caf_fuel">剩餘油量</string>
+    <string name="fx11_caf_coolant">水溫表</string>
+    <string name="fx11_caf_ambient">車外溫度</string>
+    <string name="fx11_caf_gear">檔位</string>
+    <string name="fx11_caf_tires_front">前輪胎壓 · 左 / 右</string>
+    <string name="fx11_caf_tires_rear">後輪胎壓 · 左 / 右</string>
+    <string name="fx11_caf_low_beam">近光燈</string>
+    <string name="fx11_caf_auto_hold">AutoHold 實際保持</string>
+    <string name="fx11_caf_parking_brake">駐車制動</string>
+    <string name="fx11_caf_power">空調電源</string>
+    <string name="fx11_caf_driver_temp">主駕設定溫度</string>
+    <string name="fx11_caf_passenger_temp">副駕設定溫度</string>
+    <string name="fx11_caf_fan">風量檔位</string>
+    <string name="fx11_caf_ac">A/C 製冷</string>
+    <string name="fx11_caf_auto">自動空調</string>
+    <string name="fx11_caf_recirculation">內循環</string>
+    <string name="fx11_caf_operations">操作入口</string>
+    <string name="fx11_caf_fx11">吉利 FX11</string>
+    <string name="fx11_caf_climate">空調</string>
+    <string name="fx11_caf_unknown">未知</string>
+    <string name="fx11_caf_on">開啟</string>
+    <string name="fx11_caf_off">關閉</string>
+    <string name="fx11_caf_operations_value">請開啟溫控，操作電源、A/C、溫度、風量、AUTO 和內循環</string>
+</resources>

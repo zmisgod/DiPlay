@@ -3,9 +3,8 @@ package com.shilapi.xcertplay.airplay.rcs.transport
 /**
  * APTransport package used by CarPlay type-130 RCS streams.
  *
- * Only the package size (offset 0, big-endian), message type (offset 16, big-endian), and body
- * offset (32) are confirmed by the Ultra references. The remaining header bytes are transport
- * metadata whose individual fields are not confirmed and are preserved verbatim.
+ * LIVI 3f86ad7 iap_tunnel.rs: size @0, kind (asyn/sync/rply) @4, message type @16,
+ * reply token @20 (u64), body @32. Unused header bytes are preserved verbatim.
  */
 class ApTransportPackage private constructor(
     private val header: ByteArray,
@@ -15,6 +14,9 @@ class ApTransportPackage private constructor(
 
     val messageType: Int
         get() = ApTransportPackageCodec.readMessageType(header)
+
+    val kind: Int get() = java.nio.ByteBuffer.wrap(header, 4, 4).int
+    val replyToken: Long get() = java.nio.ByteBuffer.wrap(header, 20, 8).long
 
     val encodedSize: Int
         get() = ApTransportPackageCodec.readSize(header)
@@ -51,6 +53,10 @@ object ApTransportPackageCodec {
     const val MESSAGE_TYPE_OFFSET = 16
     const val BODY_OFFSET = 32
     const val MESSAGE_TYPE_COMM = 0x636f6d6d
+    const val MESSAGE_TYPE_COMMAND = 0x636d6e64
+    const val PACKAGE_ASYNC = 0x6173796e
+    const val PACKAGE_SYNC = 0x73796e63
+    const val PACKAGE_REPLY = 0x72706c79
     const val DEFAULT_MAX_PACKAGE_BYTES = 4 * 1024 * 1024
 
     /**
@@ -58,7 +64,8 @@ object ApTransportPackageCodec {
      *
      * [uninterpretedHeader] must be either empty or a full 32-byte template. The size and message
      * type fields are overwritten. Callers that only have confirmed CAF/RCS data should use the
-     * default empty template; offsets 4/8/20/28 have no public interpretation yet.
+     * default empty template for legacy comm traffic. RcsMessage supplies kind/reply-token
+     * fields explicitly for the LIVI-compatible duplex channels.
      */
     fun comm(
         body: ByteArray,

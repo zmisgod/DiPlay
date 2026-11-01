@@ -59,11 +59,14 @@ class RcsDataStream private constructor(
     private val acceptThreads = mutableListOf<Thread>()
     private val pending = ArrayDeque<RcsMessage>()
     private var pendingBytes = 0
+    private var diagnosticMessages = 0
     private var opened = false
     private var closedCallbackSent = false
     private var handler: RcsDataStreamHandler? = null
     /** Bounded state metadata only; never pass protocol bodies, keys or peer identifiers. */
     internal var onDiagnostic: (String) -> Unit = {}
+    internal var onClosed: (Throwable?) -> Unit = {}
+    internal val isClosed: Boolean get() = closed.get() || synchronized(stateLock) { closedCallbackSent }
 
     internal fun reportDiagnostic(message: String) {
         runCatching { onDiagnostic("Ultra channel client=${clientType.name} $message") }
@@ -238,6 +241,7 @@ class RcsDataStream private constructor(
     }
 
     private fun dispatch(message: RcsMessage) {
+        if (diagnosticMessages++ < 8) reportDiagnostic("event=message type=${message.messageType} kind=${message.packageKind} bytes=${message.body.size}")
         val callback = synchronized(stateLock) {
             val target = handler
             if (target == null) {
@@ -270,10 +274,12 @@ class RcsDataStream private constructor(
             handler
         }
         reportDiagnostic("event=closed failureClass=${cause?.javaClass?.simpleName ?: "none"}")
-        synchronized(callbackLock) {
-            runCatching { callback?.onStreamClosed(this, cause) }
-                .onFailure { trace("RCS close callback failed: $it") }
-        }
+        try {
+            synchronized(callbackLock) {
+                runCatching { callback?.onStreamClosed(this, cause) }
+                    .onFailure { trace("RCS close callback failed: $it") }
+            }
+        } finally { runCatching { onClosed(cause) } }
     }
 
     private fun trace(message: String) {

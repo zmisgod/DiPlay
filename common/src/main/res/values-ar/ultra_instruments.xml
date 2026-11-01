@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">عدادات CarPlay Ultra الأصلية (تجريبي)</string>
+    <string name="settings_dashboard_ultra_hint">يستخدم فيديو عدادات iPhone. أعد توصيل CarPlay بعد التغيير. يتطلب iOS وسمة متوافقين؛ لم يكتمل التحقق في السيارة.</string>
+    <string name="settings_dashboard_ultra_waiting">بانتظار فيديو عدادات CarPlay Ultra. أعد توصيل CarPlay.</string>
+</resources>

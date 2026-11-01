@@ -174,7 +174,7 @@ data class AirPlayUiSyncInfo(
  * entry are insufficient when the corresponding RCS client type cannot be dispatched.
  */
 data class AirPlayUltraConfig(
-    val cluster: AirPlayDisplayConfig,
+    val cluster: AirPlayDisplayConfig?,
     val vehicleStateProtocolInfo: AirPlayVehicleStateProtocolInfo? = null,
     val uiSyncInfo: AirPlayUiSyncInfo? = null,
     val fileTransferInfo: Map<String, Any?>? = null,
@@ -184,4 +184,7 @@ data class AirPlayUltraConfig(
     val sessionManagementInfo: Map<String, Any?>? = null,
     val readyFeatures: Set<AirPlayFeature> = emptySet(),
     val runtime: AirPlayUltraRuntime? = null,
+    val declarePhysicalDisplayPanels: Boolean = false,
+    val declareInstrumentPlugin: Boolean = false,
+    val theme: com.shilapi.xcertplay.ultra.UltraThemeProfile? = null,
 )

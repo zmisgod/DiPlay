@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">ESP32 副螢幕（實驗性）</string>
+    <string name="esp32_enable">傳送至 ESP32</string>
+    <string name="esp32_hint">USB 設定並授權後可自動識別重連，不更改車機網路。USB 地圖最高約 4 幀/秒，其他頁面和 Wi-Fi 約每秒更新。請填配對碼。</string>
+    <string name="esp32_host">裝置 IP / 主機名稱</string>
+    <string name="esp32_token">配對碼</string>
+    <string name="esp32_invalid">位址或配對碼格式不正確</string>
+    <string name="esp32_navigation">導航資訊</string>
+    <string name="esp32_music">音樂資訊</string>
+    <string name="esp32_status">查看連線狀態</string>
+    <string name="esp32_connected">已連線</string>
+    <string name="esp32_disconnected">未連線，請檢查位址與配對碼</string>
+    <string name="esp32_no_navigation">暫無導航</string>
+    <string name="esp32_no_music">暫無音樂</string>
+    <string name="esp32_wheel">切換 ESP32 頁面</string>
+    <string name="esp32_carplay">儀表導航地圖</string>
+    <string name="esp32_no_carplay">等待儀表導航地圖</string>
+    <string name="esp32_orientation">全頁面 HUD 方向</string>
+    <string name="esp32_normal">正常顯示</string>
+    <string name="esp32_mirror_vertical">上下鏡像（HUD 反射）</string>
+    <string name="esp32_mirror_horizontal">左右鏡像</string>
+    <string name="esp32_rotate">旋轉 180°</string>
+    <string name="esp32_orientation_hint">導航、音樂、地圖統一翻轉。地圖中央畫面填滿副螢幕，偵測到的黑邊會被裁去，不留底部分頁列。</string>
+    <string name="esp32_upgrade">請先將 ESP32 韌體更新至 v0.2.0 或更新版本</string>
+    <string name="esp32_transport">連線方式</string>
+    <string name="esp32_usb_permission">連接 / 授權 USB</string>
+    <string name="esp32_usb_missing">請用資料線接入 ESP32，並在設定中授權 USB</string>
+    <string name="esp32_instruction_left">前方左轉</string>
+    <string name="esp32_instruction_right">前方右轉</string>
+    <string name="esp32_instruction_straight">前方直行</string>
+</resources>

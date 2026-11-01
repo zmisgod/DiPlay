@@ -19,6 +19,24 @@ internal object BoyueLSettings {
     fun setDim(context: Context, value: Boolean) { prefs(context).edit().putBoolean("dim", value).apply() }
     fun map(context: Context) = selected(context) && prefs(context).getBoolean("map", false)
     fun setMap(context: Context, value: Boolean) { prefs(context).edit().putBoolean("map", value).apply() }
+    fun climatePower(context: Context) = selected(context) && prefs(context).getBoolean("ultra_climate_power", false)
+    @Synchronized fun setClimatePower(context: Context, value: Boolean, expected: Boolean? = null): Boolean {
+        val saved = prefs(context)
+        val old = climatePower(context)
+        if (expected != null && old != expected) {
+            android.util.Log.w("DiPlay-Ultra", "Climate preference stale UI ignored expected=$expected saved=$old")
+            return false
+        }
+        val revision = saved.getLong("climate_revision", 0) + 1
+        val committed = saved.edit().putBoolean("ultra_climate_power", value)
+            .putLong("climate_revision", revision).putLong("climate_changed_at", System.currentTimeMillis()).commit()
+        android.util.Log.i("DiPlay-Ultra", "Climate preference old=$old requested=$value saved=${climatePower(context)} revision=$revision committed=$committed")
+        return committed
+    }
+    fun climateDiagnostic(context: Context): String = "Climate preference selected=${selected(context)} " +
+        "saved=${prefs(context).getBoolean("ultra_climate_power", false)} effective=${climatePower(context)} " +
+        "revision=${prefs(context).getLong("climate_revision", 0)} changedAt=${prefs(context).getLong("climate_changed_at", 0)}"
+
     fun ultra(context: Context) = selected(context) && prefs(context).getBoolean("ultra", false)
     fun setUltra(context: Context, value: Boolean) { prefs(context).edit().putBoolean("ultra", value).apply() }
     fun vehicleData(context: Context) = selected(context) && prefs(context).getBoolean("vehicle_data", false)
@@ -110,7 +128,7 @@ internal object BoyueLSettings {
 }
 
 internal enum class BoyueWheelAction {
-    NONE, PLAY_PAUSE, NEXT, PREVIOUS, SIRI, TOGGLE_DASHBOARD, CYCLE_DASHBOARD;
+    NONE, PLAY_PAUSE, NEXT, PREVIOUS, SIRI, TOGGLE_DASHBOARD, CYCLE_DASHBOARD, CYCLE_ESP32;
     val dashboard get() = this == TOGGLE_DASHBOARD || this == CYCLE_DASHBOARD
 }
 

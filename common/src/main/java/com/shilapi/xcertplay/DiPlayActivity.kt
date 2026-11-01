@@ -116,6 +116,7 @@ internal enum class SettingsSection {
     CARPLAY_CONTROLS,
     BOYUE_L,
     BOYUE_DIM,
+    ESP32_DISPLAY,
     WHEEL_KEYS,
     CONNECTION_SETUP,
     DIAGNOSTICS,
@@ -164,6 +165,7 @@ internal object SettingsInformationArchitecture {
             SettingsSection.CLUSTER_MAP,
             SettingsSection.LAUNCHER_BUBBLE,
             SettingsSection.BOYUE_DIM,
+            SettingsSection.ESP32_DISPLAY,
             SettingsSection.EXPERIMENTAL_DISPLAY,
             SettingsSection.NAVIGATION_CAPTURE,
             SettingsSection.ADVANCED_MEDIA,
@@ -363,6 +365,38 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
     private val iconPicker = registerForActivityResult(ActivityResultContracts.GetContent(), ::cropIcon)
     private val iconDocumentPicker = registerForActivityResult(ActivityResultContracts.OpenDocument(), ::cropIcon)
+    private fun esp32Controls(card: LinearLayout) {
+            toggle(card,getString(R.string.esp32_enable),getString(R.string.esp32_hint),Esp32Settings.enabled(this)) { Esp32Settings.enable(this,it) }
+            choice(card,getString(R.string.esp32_transport),listOf("Wi-Fi","USB"),Esp32Settings.transport(this),reconnects=false,announcesReconnect=false,adaptiveHeight=true) {
+                Esp32Settings.setTransport(this,it)
+                if(it==1 && !Esp32UsbDevices.requestPermission(this))toast(getString(R.string.esp32_usb_missing))
+            }
+            card.addView(button(getString(R.string.esp32_usb_permission),false) {
+                if(!Esp32UsbDevices.requestPermission(this))toast(getString(R.string.esp32_usb_missing))
+            }.apply { adaptiveHeight=true })
+            card.addView(button(getString(R.string.esp32_host)+" · "+Esp32Settings.host(this),false) {
+                textInput(getString(R.string.esp32_host),Esp32Settings.host(this),false) { value ->
+                    if(Esp32Settings.validHost(value.trim())) { Esp32Settings.configure(this,"host",value);render() } else toast(getString(R.string.esp32_invalid))
+                }
+            }.apply { adaptiveHeight=true })
+            card.addView(button(getString(R.string.esp32_token)+" · "+if(Esp32Settings.token(this).isEmpty()) "—" else "••••••••",false) {
+                textInput(getString(R.string.esp32_token),Esp32Settings.token(this),true) { value ->
+                    if(value.trim().matches(Regex("[A-Za-z0-9]{8,64}"))) { Esp32Settings.configure(this,"token",value);render() } else toast(getString(R.string.esp32_invalid))
+                }
+            }.apply { adaptiveHeight=true })
+            card.addView(button(getString(R.string.esp32_navigation),false) { Esp32Settings.command(this,0) }.apply { adaptiveHeight=true })
+            card.addView(button(getString(R.string.esp32_carplay),false) { Esp32Settings.command(this,2) }.apply { adaptiveHeight=true })
+            card.addView(button(getString(R.string.esp32_music),false) { Esp32Settings.command(this,1) }.apply { adaptiveHeight=true })
+            choice(card,getString(R.string.esp32_orientation),listOf(
+                getString(R.string.esp32_normal),getString(R.string.esp32_mirror_vertical),
+                getString(R.string.esp32_mirror_horizontal),getString(R.string.esp32_rotate)),
+                Esp32Settings.navigationTransform(this),reconnects=false,announcesReconnect=false,adaptiveHeight=true) {
+                Esp32Settings.setNavigationTransform(this,it)
+            }
+            card.addView(label(getString(R.string.esp32_orientation_hint),14,MUTED))
+            card.addView(button(getString(R.string.esp32_status),false) { toast(Esp32DisplayService.status.ifBlank { getString(R.string.esp32_disconnected) }) }.apply { adaptiveHeight=true })
+    }
+
     private fun cropIcon(uri: Uri?) {
         if (uri != null) iconCrop.launch(Intent(this, ImageCropActivity::class.java).setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
     }
@@ -555,6 +589,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     override fun onResume() {
         super.onResume()
         observeDashboardSettings()
+        Esp32DisplayService.refresh(this)
         NativeDashboardService.refresh(this)
         WheelKeyService.restoreIfNeeded(this)
         applyFullscreenMode()
@@ -1853,6 +1888,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         AsyncDiagnosticLog.diagnostic(),
         GeelyWheelKeys.diagnosticReport(),
         BoyueVehicleIntegration.diagnosticReport(),
+        BoyueUltraIntegration.diagnosticReport(),
     ).flatMap { it.lineSequence().toList() }.mapNotNull(DiagnosticRedactor::redact).joinToString("\n")
 
     private fun captureNativeDashboardDiagnostics(context: Context): String {
@@ -1867,6 +1903,10 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun allSettingsSections(content: LinearLayout) {
+        filteredSection(content, SettingsSection.ESP32_DISPLAY, getString(R.string.esp32_title), R.drawable.ic_dp_dashboard) { card ->
+            esp32Controls(card)
+        }
+
         filteredSection(content, SettingsSection.BOYUE_L,
             getString(R.string.settings_boyue_vehicle), R.drawable.ic_dp_car) { card ->
             choice(card, getString(R.string.settings_boyue_model),
@@ -1889,11 +1929,15 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }
         if (BoyueLSettings.selected(this)) filteredSection(content, SettingsSection.BOYUE_DIM,
             getString(R.string.settings_boyue_cluster), R.drawable.ic_dp_dashboard) { card ->
+            climatePowerSettings(card)
             choice(card, getString(R.string.settings_dashboard_title), DashboardStyle.entries.map { getString(it.title) },
                 NativeDashboardSettings.style(this).ordinal, reconnects = false, announcesReconnect = false, adaptiveHeight = true) {
                 val selected = DashboardStyle.entries[it]
                 if (selected == DashboardStyle.OFF) {
-                    if (NativeDashboardSettings.style(this) != DashboardStyle.OFF) NativeDashboardService.disable(this)
+                    if (NativeDashboardSettings.style(this) != DashboardStyle.OFF) {
+                        NativeDashboardService.disable(this)
+                        markReconnectNeeded()
+                    }
                     // Keep showing the saved style until the service confirms OEM restoration.
                     // The preference observer refreshes this page only after OFF is saved.
                     render()
@@ -1903,7 +1947,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                     render()
                 }
             }
-            card.addView(label(getString(if (NativeDashboardSettings.style(this) == DashboardStyle.OEM_OVERLAY)
+            if (NativeDashboardSettings.style(this) != DashboardStyle.CARPLAY_ULTRA) card.addView(label(getString(if (NativeDashboardSettings.style(this) == DashboardStyle.OEM_OVERLAY)
                 R.string.settings_dashboard_oem_overlay_description else R.string.settings_dashboard_description), 14, MUTED))
             if (NativeDashboardSettings.style(this) == DashboardStyle.OEM_OVERLAY) {
                 choice(card, getString(R.string.settings_overlay_path), OemOverlayPath.entries.map { getString(it.title) },
@@ -1924,6 +1968,12 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 }
                 card.addView(label(getString(R.string.settings_dashboard_appearance_hint), 14, MUTED))
             }
+            if (NativeDashboardSettings.style(this) == DashboardStyle.CARPLAY_ULTRA) {
+                card.addView(label(getString(R.string.settings_dashboard_ultra_hint), 14, MUTED))
+                card.addView(button(getString(R.string.settings_dashboard_projection_toggle), false) {
+                    NativeDashboardService.toggleProjection(this)
+                }.apply { adaptiveHeight = true }, matchButton(0, CONTROL_HEIGHT_DP))
+            } else {
             dashboardPresentationControls(card)
             val dashboardModes = NativeDashboardSettings.modes(this)
             if (!NativeDashboardSettings.mirrorMain(this)) {
@@ -1954,6 +2004,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(button(getString(R.string.settings_dashboard_preview), false) {
                 startActivity(Intent(this, NativeDashboardPreviewActivity::class.java))
             }.apply { adaptiveHeight = true }, matchButton(0, CONTROL_HEIGHT_DP))
+            }
             toggle(card, getString(R.string.settings_boyue_dim), getString(R.string.settings_boyue_dim_description),
                 BoyueLSettings.dim(this)) {
                 BoyueLSettings.setDim(this, it)
@@ -4478,6 +4529,18 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     /** Steering-wheel keys for the dashboard map zoom and the CarPlay joystick: the switches, the key service and the keys. */
     // One place for the key service setup, above every feature that needs it.
+    private fun climatePowerSettings(card: LinearLayout) {
+        var shown = BoyueLSettings.climatePower(this)
+        val control = toggle(card, getString(R.string.settings_climate_power), getString(R.string.settings_climate_power_description), shown) { next ->
+            if (BoyueLSettings.setClimatePower(this, next, expected = shown)) {
+                shown = next
+                markReconnectNeeded()
+            } else render()
+        }
+        // Preference is the authority; Android view restoration must not write an old toggle back.
+        control.isSaveEnabled = false
+    }
+
     private fun boyueWheelSettings(card: LinearLayout) {
         toggle(card, getString(R.string.settings_boyue_wheel), getString(R.string.settings_boyue_wheel_description),
             BoyueLSettings.wheel(this)) {
@@ -4487,7 +4550,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         card.addView(label(getString(R.string.settings_boyue_press_hint), 14, MUTED))
         val actions = listOf(R.string.settings_boyue_none, R.string.settings_boyue_play,
             R.string.settings_boyue_next, R.string.settings_boyue_previous, R.string.settings_boyue_siri,
-            R.string.settings_boyue_action_dashboard, R.string.settings_boyue_action_page).map(::getString)
+            R.string.settings_boyue_action_dashboard, R.string.settings_boyue_action_page, R.string.esp32_wheel).map(::getString)
         for (key in BoyueLSettings.editableKeys(this)) {
             val title = when (key) {
                 NativeDashboardSettings.modeKey(this) -> getString(R.string.settings_boyue_key_mode)

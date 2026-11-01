@@ -50,6 +50,10 @@ class AirPlayEventPeerTest {
                 },
                 media = object : AirPlayMediaHandler {},
             )
+            // This test covers peer filtering, not pair-verify. An unpaired accepted peer
+            // is immediately reset (SO_LINGER=0), racing the client's connect() on macOS.
+            PairVerify::class.java.getDeclaredField("sharedSecret").apply { isAccessible = true }
+                .set(session.pairVerify, ByteArray(32))
             try { block(session) } finally { session.close(); accepted.close() }
         }
     }

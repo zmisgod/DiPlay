@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">شاشة ESP32 (تجريبي)</string>
+    <string name="esp32_enable">إرسال إلى ESP32</string>
+    <string name="esp32_hint">يعيد USB الاتصال تلقائياً بعد الإعداد والإذن. تستهدف خرائط USB حتى 4 إطارات/ثانية؛ تتحدث الصفحات الأخرى وWi-Fi كل ثانية تقريباً. أدخل رمز الاقتران.</string>
+    <string name="esp32_host">عنوان IP / اسم الجهاز</string>
+    <string name="esp32_token">رمز الاقتران</string>
+    <string name="esp32_invalid">عنوان أو رمز غير صالح</string>
+    <string name="esp32_navigation">الملاحة</string>
+    <string name="esp32_music">الموسيقى</string>
+    <string name="esp32_status">حالة الاتصال</string>
+    <string name="esp32_connected">متصل</string>
+    <string name="esp32_disconnected">غير متصل؛ تحقق من العنوان والرمز</string>
+    <string name="esp32_no_navigation">لا توجد ملاحة</string>
+    <string name="esp32_no_music">لا توجد موسيقى</string>
+    <string name="esp32_wheel">تبديل صفحة ESP32</string>
+    <string name="esp32_carplay">خريطة العدادات</string>
+    <string name="esp32_no_carplay">في انتظار خريطة العدادات</string>
+    <string name="esp32_orientation">اتجاه HUD لجميع الصفحات</string>
+    <string name="esp32_normal">عادي</string>
+    <string name="esp32_mirror_vertical">قلب رأسي (HUD)</string>
+    <string name="esp32_mirror_horizontal">انعكاس أفقي</string>
+    <string name="esp32_rotate">تدوير 180°</string>
+    <string name="esp32_orientation_hint">ينطبق HUD على الملاحة والموسيقى والخرائط. تملأ الخريطة الشاشة من وسط بث العدادات، مع قص الحواف السوداء المكتشفة.</string>
+    <string name="esp32_upgrade">حدّث برنامج ESP32 الثابت إلى v0.2.0 أو أحدث</string>
+    <string name="esp32_transport">طريقة الاتصال</string>
+    <string name="esp32_usb_permission">توصيل / تفويض USB</string>
+    <string name="esp32_usb_missing">وصّل ESP32 بكابل بيانات وامنح إذن USB من الإعدادات</string>
+    <string name="esp32_instruction_left">انعطف يسارًا أمامك</string>
+    <string name="esp32_instruction_right">انعطف يمينًا أمامك</string>
+    <string name="esp32_instruction_straight">تابع إلى الأمام</string>
+</resources>

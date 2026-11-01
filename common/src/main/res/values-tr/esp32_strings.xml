@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">ESP32 ekranı (deneysel)</string>
+    <string name="esp32_enable">ESP32 ekranına gönder</string>
+    <string name="esp32_hint">Kurulum ve izin sonrası USB otomatik yeniden bağlanır. USB haritaları en fazla yaklaşık 4 fps; diğer sayfalar ve Wi-Fi saniyede bir yenilenir. Eşleştirme anahtarını girin.</string>
+    <string name="esp32_host">Cihaz IP / ana makine adı</string>
+    <string name="esp32_token">Eşleştirme kodu</string>
+    <string name="esp32_invalid">Geçersiz adres veya kod</string>
+    <string name="esp32_navigation">Navigasyon</string>
+    <string name="esp32_music">Müzik</string>
+    <string name="esp32_status">Bağlantı durumu</string>
+    <string name="esp32_connected">Bağlandı</string>
+    <string name="esp32_disconnected">Bağlı değil; adresi ve kodu kontrol edin</string>
+    <string name="esp32_no_navigation">Navigasyon yok</string>
+    <string name="esp32_no_music">Müzik yok</string>
+    <string name="esp32_wheel">ESP32 sayfasını değiştir</string>
+    <string name="esp32_carplay">Gösterge haritası</string>
+    <string name="esp32_no_carplay">Gösterge haritası bekleniyor</string>
+    <string name="esp32_orientation">Tüm sayfalar için HUD yönü</string>
+    <string name="esp32_normal">Normal</string>
+    <string name="esp32_mirror_vertical">Dikey çevir (HUD)</string>
+    <string name="esp32_mirror_horizontal">Yatay yansıt</string>
+    <string name="esp32_rotate">180° döndür</string>
+    <string name="esp32_orientation_hint">HUD navigasyon, müzik ve haritalara uygulanır. Gösterge haritasının merkezi ekranı doldurur; algılanan siyah kenarlar kırpılır.</string>
+    <string name="esp32_upgrade">ESP32 donanım yazılımını v0.2.0 veya üstüne güncelleyin</string>
+    <string name="esp32_transport">Bağlantı yöntemi</string>
+    <string name="esp32_usb_permission">USB bağla / yetkilendir</string>
+    <string name="esp32_usb_missing">ESP32 cihazını veri kablosuyla bağlayın ve ayarlardan USB izni verin</string>
+    <string name="esp32_instruction_left">İleride sola dönün</string>
+    <string name="esp32_instruction_right">İleride sağa dönün</string>
+    <string name="esp32_instruction_straight">Düz devam edin</string>
+</resources>

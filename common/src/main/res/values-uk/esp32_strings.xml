@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">Екран ESP32 (експериментально)</string>
+    <string name="esp32_enable">Передавати на ESP32</string>
+    <string name="esp32_hint">Після налаштування й дозволу USB підключається автоматично. Карта USB: до 4 кадр/с; інші сторінки та Wi-Fi: приблизно раз на секунду. Введіть ключ сполучення.</string>
+    <string name="esp32_host">IP / назва пристрою</string>
+    <string name="esp32_token">Код сполучення</string>
+    <string name="esp32_invalid">Неправильна адреса або код</string>
+    <string name="esp32_navigation">Навігація</string>
+    <string name="esp32_music">Музика</string>
+    <string name="esp32_status">Стан з’єднання</string>
+    <string name="esp32_connected">Підключено</string>
+    <string name="esp32_disconnected">Немає зв’язку: перевірте адресу й код</string>
+    <string name="esp32_no_navigation">Немає навігації</string>
+    <string name="esp32_no_music">Немає музики</string>
+    <string name="esp32_wheel">Перемкнути сторінку ESP32</string>
+    <string name="esp32_carplay">Карта приладової панелі</string>
+    <string name="esp32_no_carplay">Очікування карти приладової панелі</string>
+    <string name="esp32_orientation">Орієнтація HUD усіх сторінок</string>
+    <string name="esp32_normal">Звичайна</string>
+    <string name="esp32_mirror_vertical">Віддзеркалення по вертикалі (HUD)</string>
+    <string name="esp32_mirror_horizontal">Віддзеркалення по горизонталі</string>
+    <string name="esp32_rotate">Поворот на 180°</string>
+    <string name="esp32_orientation_hint">HUD застосовується до навігації, музики й карт. Центр карти панелі приладів заповнює екран; виявлені чорні поля обрізаються.</string>
+    <string name="esp32_upgrade">Оновіть прошивку ESP32 до v0.2.0 або новішої</string>
+    <string name="esp32_transport">Спосіб підключення</string>
+    <string name="esp32_usb_permission">Підключити / дозволити USB</string>
+    <string name="esp32_usb_missing">Підключіть ESP32 кабелем даних і дозвольте USB у налаштуваннях</string>
+    <string name="esp32_instruction_left">Попереду ліворуч</string>
+    <string name="esp32_instruction_right">Попереду праворуч</string>
+    <string name="esp32_instruction_straight">Рухайтеся прямо</string>
+</resources>

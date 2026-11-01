@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">Display ESP32 (sperimentale)</string>
+    <string name="esp32_enable">Invia a ESP32</string>
+    <string name="esp32_hint">USB si riconnette automaticamente dopo configurazione e autorizzazione. Mappe USB: fino a 4 fps; altre pagine e Wi-Fi: circa una volta al secondo. Inserisci la chiave.</string>
+    <string name="esp32_host">IP / nome del dispositivo</string>
+    <string name="esp32_token">Codice di abbinamento</string>
+    <string name="esp32_invalid">Indirizzo o codice non valido</string>
+    <string name="esp32_navigation">Navigazione</string>
+    <string name="esp32_music">Musica</string>
+    <string name="esp32_status">Stato connessione</string>
+    <string name="esp32_connected">Connesso</string>
+    <string name="esp32_disconnected">Disconnesso; verifica indirizzo e codice</string>
+    <string name="esp32_no_navigation">Nessuna navigazione</string>
+    <string name="esp32_no_music">Nessuna musica</string>
+    <string name="esp32_wheel">Cambia pagina ESP32</string>
+    <string name="esp32_carplay">Mappa del quadro</string>
+    <string name="esp32_no_carplay">In attesa della mappa del quadro</string>
+    <string name="esp32_orientation">Orientamento HUD di tutte le pagine</string>
+    <string name="esp32_normal">Normale</string>
+    <string name="esp32_mirror_vertical">Capovolgi verticalmente (HUD)</string>
+    <string name="esp32_mirror_horizontal">Rifletti orizzontalmente</string>
+    <string name="esp32_rotate">Ruota di 180°</string>
+    <string name="esp32_orientation_hint">HUD si applica a navigazione, musica e mappe. Il centro della mappa del quadro riempie lo schermo; i bordi neri rilevati vengono ritagliati.</string>
+    <string name="esp32_upgrade">Aggiorna il firmware ESP32 alla v0.2.0 o successiva</string>
+    <string name="esp32_transport">Metodo di connessione</string>
+    <string name="esp32_usb_permission">Collega / autorizza USB</string>
+    <string name="esp32_usb_missing">Collega ESP32 con un cavo dati e autorizza USB nelle impostazioni</string>
+    <string name="esp32_instruction_left">Svolta a sinistra</string>
+    <string name="esp32_instruction_right">Svolta a destra</string>
+    <string name="esp32_instruction_straight">Prosegui dritto</string>
+</resources>

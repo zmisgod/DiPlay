@@ -117,11 +117,25 @@ class DashboardConceptsTest {
                         assertTrue(Color.luminance(image.getPixel(960,0))>.5f)
                         assertTrue(Color.luminance(image.getPixel(960,531))>.5f)
                     }
-                    // Every concept must draw exactly the same module content and geometry.
+                    // Every concept shares glyphs/readouts/geometry; the surface belongs to its material.
                     if(page==DashboardMode.NAVIGATION) {
                         if(reference==null) reference=image.copy(Bitmap.Config.ARGB_8888,false) else {
-                            for(x in 550..1370 step 4) for(y in 5..50 step 3) assertEquals("$style $scale $appearance top",reference.getPixel(x,y),image.getPixel(x,y))
-                            for(x in 680..1240 step 4) for(y in 493..525 step 3) assertEquals("$style $scale $appearance bottom",reference.getPixel(x,y),image.getPixel(x,y))
+                            val foreground=if(appearance==DashboardAppearance.DAY) setOf(ReplicaDayPalette.text,
+                                ReplicaDayPalette.secondary,ReplicaDayPalette.inactive,ReplicaDayPalette.green,
+                                ReplicaDayPalette.red,ReplicaDayPalette.amber,ReplicaDayPalette.blue)
+                            else setOf(Color.rgb(243,248,255),Color.rgb(141,162,182),Color.rgb(38,57,74),
+                                Color.rgb(100,224,166),Color.rgb(255,105,104),Color.rgb(255,193,90),Color.rgb(79,165,255))
+                            var compared=0
+                            for(r in listOf(Rect(520,2,1400,58),Rect(610,486,1310,527)))
+                                for(x in r.left until r.right) for(y in r.top until r.bottom) {
+                                    val pixel=reference.getPixel(x,y)
+                                    // Exclude antialias blending against different surface colors, not opaque icon pixels.
+                                    if(pixel in foreground) {
+                                        assertEquals("$style $scale $appearance shared foreground at $x/$y",pixel,image.getPixel(x,y))
+                                        compared++
+                                    }
+                                }
+                            assertTrue("Thousands of actual foreground pixels must be checked",compared>3000)
                         }
                     }
                     File(out,"${style.name.lowercase()}-${appearance.name.lowercase()}-${scale}x-${page.name.lowercase()}.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }

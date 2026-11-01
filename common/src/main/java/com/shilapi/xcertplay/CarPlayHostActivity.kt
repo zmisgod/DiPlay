@@ -202,6 +202,7 @@ open class CarPlayHostActivity : ComponentActivity() {
         remoteMfiToken = remoteMfiToken.takeIf { it.isNotEmpty() },
         identification = Iap2IdentificationConfig(
             name = "DiPlay",
+            theme = BoyueUltraIntegration.theme(this),
             modelIdentifier = normalizedModel(),
             manufacturer = normalizedManufacturer(),
             serialNumber = "DIPLAY-" + DiPlayBootstrap.deviceId(airPlayIdentity).replace(":", ""),
@@ -480,6 +481,24 @@ open class CarPlayHostActivity : ComponentActivity() {
         }
     }
     // Copies of stream 111 outside the dashboard (centre card, launcher maps) each get their own decoder.
+    private val esp32FrameProvider: ((Bitmap?)->Unit)->Unit = { done ->
+        val source=clusterSurface?.takeIf { it.isValid } ?: MapMirrors.captureSurface()
+        if(!CarPlayBackgroundSession.active || !MapMirrors.streamActive || source?.isValid!=true) {
+            done(null)
+        } else {
+            val aspect=MapMirrors.STREAM_ASPECT.coerceIn(0.1,10.0)
+            val width=if(aspect>=1)(466*aspect).toInt().coerceIn(1,2048) else 466
+            val height=(width/aspect).toInt().coerceIn(1,2048)
+            val picture=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
+            runCatching {
+                PixelCopy.request(source,picture,{ result ->
+                    if(result==PixelCopy.SUCCESS && CarPlayBackgroundSession.active && MapMirrors.streamActive && source.isValid && Esp32CarPlayFrames.provider===esp32FrameProviderIdentity()) done(picture)
+                    else { picture.recycle();done(null) }
+                },mainHandler)
+            }.onFailure { picture.recycle();done(null) }
+        }
+    }
+    private fun esp32FrameProviderIdentity() = esp32FrameProvider
     private val mainMirrorSink: (String, Surface?) -> Unit = { key, surface -> sink?.setMirrorSurface(SCREEN_TYPE_MAIN, key, surface) }
     private val mirrorSink: (String, Surface?) -> Unit = { key, surface -> sink?.setMirrorSurface(SCREEN_TYPE_ALT, key, surface) }
     private val mirrorsChanged: () -> Unit = {
@@ -872,6 +891,7 @@ open class CarPlayHostActivity : ComponentActivity() {
         CenterMapOverlay.requestShow = ::showCenterMap
         MapMirrors.sink = mirrorSink
         MainScreenMirrors.sink = mainMirrorSink
+        Esp32CarPlayFrames.provider = esp32FrameProvider
         MapMirrors.onChanged = mirrorsChanged
         languagePreferenceAtCreate = AppLocale.preference(this)
         if (isIphoneUsbAttachment(intent)) {
@@ -1591,7 +1611,7 @@ open class CarPlayHostActivity : ComponentActivity() {
         adbClusterConfigured = false
         clusterStreamOnDisplay = false
         requestedSmallWindowForStream = null
-        if (!AirPlayPersistence.loadClusterMapEnabled(this)) return null
+        if (!AirPlayPersistence.loadClusterMapEnabled(this) && NativeDashboardSettings.style(this) != DashboardStyle.CARPLAY_ULTRA) return null
         if (NativeDashboardSettings.enabled(this)) {
             // Ordinary CarPlay map stream; the service renders vehicle gauges locally, even offline.
             val style = NativeDashboardSettings.style(this)
@@ -2039,8 +2059,10 @@ open class CarPlayHostActivity : ComponentActivity() {
         if (MapMirrors.sink === mirrorSink) {
             MapMirrors.sink = null
             MapMirrors.setStreamActive(false)
-                    MainScreenMirrors.setActive(false)
+            UltraClusterOutput.setActive(false)
+            MainScreenMirrors.setActive(false)
         }
+        if (Esp32CarPlayFrames.provider === esp32FrameProvider) Esp32CarPlayFrames.provider=null
         if (MainScreenMirrors.sink === mainMirrorSink) { MainScreenMirrors.sink=null;MainScreenMirrors.setActive(false) }
         if (MapMirrors.onChanged === mirrorsChanged) MapMirrors.onChanged = null
         dismissClusterPresentation()
@@ -4161,8 +4183,10 @@ open class CarPlayHostActivity : ComponentActivity() {
             carPlayDock = next
             val from = sessionDock
             val areas = sessionDisplay?.viewAreas
-            val target = next.edge?.let { areas?.withDock(it) }
-            if (from != null && areas != null && target != null && CarPlayDock.movesLive(from, next) &&
+            val effective = UltraPortraitLayout.dock(next, sessionUltraEnabled && BoyueLSettings.climatePower(this),
+                areas?.areas?.get(areas.current)?.width ?: 0, areas?.areas?.get(areas.current)?.height ?: 0)
+            val target = effective.edge?.let { areas?.withDock(it) }
+            if (from != null && areas != null && target != null && CarPlayDock.movesLive(from, effective) &&
                 controller?.showViewArea(target) == true
             ) {
                 areas.use(target)
@@ -5055,7 +5079,10 @@ open class CarPlayHostActivity : ComponentActivity() {
         // between live. A session that starts in split screen sizes its canvas to that window, so it keeps
         // the plain canvas and one area for it.
         val inSplitScreen = isMultiWindowActive()
-        val dock = CarPlayDock.load(this).also { sessionDock = it }
+        val requestedDock = CarPlayDock.load(this)
+        val dock = UltraPortraitLayout.dock(requestedDock, BoyueLSettings.climatePower(this),
+            display.widthPixels, display.heightPixels).also { sessionDock = it }
+        if (dock != requestedDock) appendLog("Ultra portrait layout: requestedDock=$requestedDock effectiveDock=$dock; saved preference unchanged")
         // The whole screen and CarPlay's full window in each orientation: the system bars take their
         // place in both, so a remembered split window is sized against the window of its orientation.
         val screen = android.util.DisplayMetrics().also { windowManager.defaultDisplay.getRealMetrics(it) }
@@ -5131,7 +5158,10 @@ open class CarPlayHostActivity : ComponentActivity() {
         val carBluetoothAudio = AirPlayPersistence.loadCarBluetoothAudio(this)
         if (carBluetoothAudio) logCarBluetoothAudio()
         val clusterDisplay = clusterDisplayConfig()
-        val ultraConfig = BoyueUltraIntegration.config(this, clusterDisplay)
+        val climateLog = sessionLog
+        val ultraConfig = BoyueUltraIntegration.config(this, clusterDisplay) { message ->
+            AsyncDiagnosticLog.append(climateLog, "Climate: $message")
+        }
         sessionUltraEnabled = ultraConfig != null
         appendLog("connection configuration ultra=$sessionUltraEnabled nativeDashboard=${NativeDashboardSettings.enabled(this)} " +
             "controlDeviceIdFormat=decimal; ${BoyueUltraIntegration.status}")
@@ -5408,6 +5438,7 @@ open class CarPlayHostActivity : ComponentActivity() {
                         return@runOnUiThread
                     }
                     activeAirPlaySession = session
+                    UltraClusterOutput.setActive(session.originalInstrumentNegotiated && SCREEN_TYPE_ALT in activeScreenStreamTypes)
                     if (!session.hasRenderedMainFrame) clusterSurface?.let { sink?.clearSurface(SCREEN_TYPE_ALT, it) }
                     val pending = pendingIphoneCornerMask
                     if (pending?.first === session) {
@@ -5462,6 +5493,7 @@ open class CarPlayHostActivity : ComponentActivity() {
                     }
                     if (controllerGeneration != restartGeneration || startupRetryStopped) return@runOnUiThread
                     MapMirrors.setStreamActive(false)
+                    UltraClusterOutput.setActive(false)
                     MainScreenMirrors.setActive(false)
                     ClusterMusicState.publish(com.shilapi.xcertplay.media.CarPlayNowPlaying(), null)
                     com.shilapi.xcertplay.hud.GeelyDimNavigation.clear()
@@ -5488,6 +5520,7 @@ open class CarPlayHostActivity : ComponentActivity() {
                 runOnUiThread {
                     if (controllerGeneration != restartGeneration || startupRetryStopped) return@runOnUiThread
                     MapMirrors.setStreamActive(false)
+                    UltraClusterOutput.setActive(false)
                     MainScreenMirrors.setActive(false)
                     ClusterMusicState.publish(com.shilapi.xcertplay.media.CarPlayNowPlaying(), null)
                     com.shilapi.xcertplay.hud.GeelyDimNavigation.clear()
@@ -6166,7 +6199,8 @@ open class CarPlayHostActivity : ComponentActivity() {
                 updateCallPopupGuard()
                 activeScreenStreamTypes.clear()
                 MapMirrors.setStreamActive(false)
-                    MainScreenMirrors.setActive(false)
+                UltraClusterOutput.setActive(false)
+                MainScreenMirrors.setActive(false)
                 ClusterActivityOutput.setStreamActive(false)
                 ClusterMusicState.publish(com.shilapi.xcertplay.media.CarPlayNowPlaying(), null)
                 com.shilapi.xcertplay.hud.GeelyDimNavigation.clear()
@@ -6226,7 +6260,8 @@ open class CarPlayHostActivity : ComponentActivity() {
         appendLog(reason)
         activeScreenStreamTypes.clear()
         MapMirrors.setStreamActive(false)
-                    MainScreenMirrors.setActive(false)
+        UltraClusterOutput.setActive(false)
+        MainScreenMirrors.setActive(false)
         ClusterActivityOutput.setStreamActive(false)
         setConnectionStage(reason)
         Log.i(TAG, "$reason; rebuilding stack at ${size.width}x${size.height}")
@@ -6779,6 +6814,7 @@ open class CarPlayHostActivity : ComponentActivity() {
         runOnUiThread {
             if (shuttingDown.get() || generation != restartGeneration) return@runOnUiThread
             if(type==SCREEN_TYPE_MAIN) MainScreenMirrors.setActive(active)
+            if (type == SCREEN_TYPE_ALT) UltraClusterOutput.setActive(active && controller?.isOriginalUltraInstrument() == true)
             if (type == SCREEN_TYPE_MAIN && !active) clearIphoneCornerMask()
             if (active) {
                 activeScreenStreamTypes.add(type)

@@ -1,0 +1,5 @@
+<resources>
+    <string name="settings_dashboard_carplay_ultra">Instrumentos originales de CarPlay Ultra (experimental)</string>
+    <string name="settings_dashboard_ultra_hint">Usa el vídeo del cuadro del iPhone. Vuelve a conectar CarPlay al cambiar. Requiere iOS y un tema compatibles; falta validar en el vehículo.</string>
+    <string name="settings_dashboard_ultra_waiting">Esperando el cuadro de CarPlay Ultra. Vuelve a conectar CarPlay.</string>
+</resources>

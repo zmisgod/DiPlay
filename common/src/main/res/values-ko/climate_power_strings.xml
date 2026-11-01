@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_climate_power">CarPlay 공조 메뉴 (실험 기능)</string>
+    <string name="settings_climate_power_description">FX11에서 지원하는 전원, A/C, 온도, 풍량, 내기 순환, AUTO 제어와 실제 상태 동기화를 허용합니다. CarPlay 재연결 후 적용하며 기존 계기판은 유지됩니다. 이 설정은 CarPlay 메뉴 표시를 제어하며 차량 공조의 현재 전원 상태를 나타내지 않습니다. 변경 후 다시 연결하세요.</string>
+</resources>

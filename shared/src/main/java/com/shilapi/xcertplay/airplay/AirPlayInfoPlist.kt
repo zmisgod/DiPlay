@@ -8,6 +8,7 @@ package com.shilapi.xcertplay.airplay
  */
 object AirPlayInfoPlist {
     const val MAIN_UUID = "b7e6c5a0-1111-4000-8000-000000000001"
+    const val INSTRUMENT_UUID = "b7e6c5a0-3333-4000-8000-000000000003"
     const val ALT_UUID = "b7e6c5a0-2222-4000-8000-000000000002"
 
     private const val STREAM_TYPE_MAIN_SCREEN = 110
@@ -28,11 +29,16 @@ object AirPlayInfoPlist {
     fun features(config: AirPlayConfig): Long =
         if (config.disableAudioOutput) CARPLAY_FEATURES_NO_AUDIO else CARPLAY_FEATURES
 
+    fun mainUuid(config: AirPlayConfig): String = config.ultra?.theme?.mainPanel ?: MAIN_UUID
+    fun clusterUuid(config: AirPlayConfig): String = config.ultra?.theme?.clusterPanel ?: ALT_UUID
+
     fun build(config: AirPlayConfig): Map<String, Any?> {
-        val displays = arrayListOf<Any?>(
-            displayEntry(config.main, STREAM_TYPE_MAIN_SCREEN, MAIN_UUID),
+        val mainUuid = mainUuid(config)
+        val clusterUuid = clusterUuid(config)
+        val displays = arrayListOf<Map<String, Any?>>(
+            displayEntry(config.main, STREAM_TYPE_MAIN_SCREEN, mainUuid),
         )
-        config.cluster?.let { displays.add(displayEntry(it, STREAM_TYPE_ALT_SCREEN, ALT_UUID)) }
+        config.cluster?.let { displays.add(displayEntry(it, STREAM_TYPE_ALT_SCREEN, clusterUuid)) }
 
         val info = linkedMapOf<String, Any?>(
             "sourceVersion" to config.sourceVersion,
@@ -56,10 +62,10 @@ object AirPlayInfoPlist {
         info["extendedFeatures"] = listOf("vocoderInfo", "enhancedRequestCarUI")
         info["displays"] = displays
         info["hidDevices"] = listOf(
-            AirPlayHid.touchHidDevice(config.main.widthPixels, config.main.heightPixels, MAIN_UUID),
-            AirPlayHid.knobHidDevice(MAIN_UUID),
-            AirPlayHid.mediaHidDevice(MAIN_UUID),
-            AirPlayHid.telephonyHidDevice(MAIN_UUID),
+            AirPlayHid.touchHidDevice(config.main.widthPixels, config.main.heightPixels, mainUuid),
+            AirPlayHid.knobHidDevice(mainUuid),
+            AirPlayHid.mediaHidDevice(mainUuid),
+            AirPlayHid.telephonyHidDevice(mainUuid),
         )
         if (config.icons.isNotEmpty()) {
             info["oemIconVisible"] = true
@@ -90,6 +96,26 @@ object AirPlayInfoPlist {
                         info[requireNotNull(feature.infoResponseKey)] = AirPlayFeatureNegotiation.resolveInfoSidecar(config, feature)
                     }
                 }
+        }
+        if (config.ultra?.declarePhysicalDisplayPanels == true && "vehicleStateProtocolInfo" in info) {
+            val theme = config.ultra.theme
+            fun panel(display: Map<String, Any?>, uid: String, streams: List<String>, instruments: Boolean, plugin: Boolean): Map<String, Any?> =
+                linkedMapOf<String, Any?>(
+                    "uid" to uid, "widthPixels" to display["widthPixels"], "heightPixels" to display["heightPixels"],
+                    "widthPhysical" to (display["widthPhysical"] ?: 0), "heightPhysical" to (display["heightPhysical"] ?: 0),
+                    "properties" to if (instruments) listOf("showsInstruments") else emptyList<String>(),
+                    "initialVideoStreams" to streams.map { mapOf("uuid" to it, "originXPixels" to 0, "originYPixels" to 0, "zIndex" to 0) }
+                ).apply { if (plugin) put("displayPlugins", listOf(mapOf("uid" to if (streams.isEmpty()) "$INSTRUMENT_UUID-plugin" else uid, "videoStreams" to streams))) }
+            val panels = displays.map { display ->
+                val uuid = display["uuid"] as String
+                val alt = display["type"] == STREAM_TYPE_ALT_SCREEN
+                panel(display, if (theme == null) "$uuid-panel" else if (alt) theme.clusterPanel else theme.mainPanel,
+                    listOf(uuid), alt, alt && theme != null)
+            }.toMutableList()
+            if (config.ultra.declareInstrumentPlugin && (theme == null || config.cluster == null)) {
+                panels += panel(displays.last(), "$INSTRUMENT_UUID-panel", emptyList(), true, true)
+            }
+            info["displayPanels"] = panels
         }
         return info
     }
@@ -193,10 +219,10 @@ object AirPlayInfoPlist {
      * updateViewArea for the main screen. Seen on a Tang with iOS 27: the iPhone acts on it only with an
      * animation duration and the adjacent areas, the arguments CarPlaySDK's ViewAreaUpdate takes.
      */
-    fun viewAreaCommand(index: Int, areaCount: Int): Map<String, Any?> = linkedMapOf(
+    fun viewAreaCommand(index: Int, areaCount: Int, uuid: String = MAIN_UUID): Map<String, Any?> = linkedMapOf(
         "type" to "updateViewArea",
         "params" to linkedMapOf(
-            "uuid" to MAIN_UUID,
+            "uuid" to uuid,
             "viewAreaIndex" to index,
             "animationDurationMillis" to VIEW_AREA_ANIMATION_MILLIS,
             "adjacentViewAreas" to (0 until areaCount).filter { it != index },
@@ -235,10 +261,10 @@ object AirPlayInfoPlist {
         // Several areas let the car move CarPlay between them (another dock edge, the head unit's split
         // screen) with updateViewArea, without reconnecting.
         val areas = display.viewAreas?.takeIf { it.isNotEmpty() }
-        val disableSafeArea = uuid == MAIN_UUID && display.mainDisplayDisableSafeArea
+        val disableSafeArea = type == STREAM_TYPE_MAIN_SCREEN && display.mainDisplayDisableSafeArea
         entry["viewAreas"] = areas?.map { areaDict(display, it, disableSafeArea) } ?: listOf(areaDict(display, null, disableSafeArea))
         entry["initialViewArea"] = if (areas == null) 0 else display.initialViewArea.coerceIn(0, areas.lastIndex)
-        if (uuid == MAIN_UUID && display.mainDisplayCornerMasks != null) entry["cornerMasks"] = display.mainDisplayCornerMasks
+        if (type == STREAM_TYPE_MAIN_SCREEN && display.mainDisplayCornerMasks != null) entry["cornerMasks"] = display.mainDisplayCornerMasks
         if (areas != null && areas.size > 1) entry["viewAreaTransitionControl"] = true
         if (display.initialUrl != null) entry["initialURL"] = display.initialUrl
         return entry

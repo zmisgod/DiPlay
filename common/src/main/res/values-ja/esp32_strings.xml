@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="esp32_title">ESP32 画面（実験的機能）</string>
+    <string name="esp32_enable">ESP32 に送信</string>
+    <string name="esp32_hint">設定と許可後、USB は自動的に再接続します。USB 地図は最大約 4 fps、他のページと Wi-Fi は約 1 秒ごとに更新します。ペアリングキーを入力してください。</string>
+    <string name="esp32_host">デバイス IP / ホスト名</string>
+    <string name="esp32_token">ペアリングコード</string>
+    <string name="esp32_invalid">アドレスまたはコードが無効です</string>
+    <string name="esp32_navigation">ナビゲーション</string>
+    <string name="esp32_music">音楽</string>
+    <string name="esp32_status">接続状態</string>
+    <string name="esp32_connected">接続済み</string>
+    <string name="esp32_disconnected">未接続：アドレスとコードを確認</string>
+    <string name="esp32_no_navigation">ナビ情報なし</string>
+    <string name="esp32_no_music">音楽情報なし</string>
+    <string name="esp32_wheel">ESP32 ページ切り替え</string>
+    <string name="esp32_carplay">メーターのナビ地図</string>
+    <string name="esp32_no_carplay">メーター地図を待機中</string>
+    <string name="esp32_orientation">全ページの HUD 向き</string>
+    <string name="esp32_normal">通常</string>
+    <string name="esp32_mirror_vertical">上下反転（HUD）</string>
+    <string name="esp32_mirror_horizontal">左右反転</string>
+    <string name="esp32_rotate">180° 回転</string>
+    <string name="esp32_orientation_hint">HUD はナビ・音楽・地図すべてに適用されます。メーター地図の中央部分を全画面に表示し、検出した黒い余白を切り取ります。</string>
+    <string name="esp32_upgrade">ESP32 ファームウェアを v0.2.0 以降に更新してください</string>
+    <string name="esp32_transport">接続方法</string>
+    <string name="esp32_usb_permission">USB 接続 / 許可</string>
+    <string name="esp32_usb_missing">ESP32 をデータケーブルで接続し、設定で USB を許可してください</string>
+    <string name="esp32_instruction_left">この先左折</string>
+    <string name="esp32_instruction_right">この先右折</string>
+    <string name="esp32_instruction_straight">この先直進</string>
+</resources>
